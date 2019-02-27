@@ -1,7 +1,7 @@
 #!/bin/bash
 
 #
-# Copyright (C) 2017 Orange
+# Copyright (C) 2017 - 2019 Orange
 #
 # This software is distributed under the terms and conditions of the GNU
 # General Public Licence version 3 as published by the Free Software

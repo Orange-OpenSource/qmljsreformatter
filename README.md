@@ -27,7 +27,7 @@ $ make -j 4
 
 Considering the following _Example.qml_ file:
 
-```
+```qml
 // Example.qml
 import QtQuick 2.5
 Item{property int id:5;Component.onCompleted:{console.log("Completed!")}
@@ -37,18 +37,18 @@ Item{property int id:5;Component.onCompleted:{console.log("Completed!")}
 Run _qmljsreformatter_ to create a new file:
 
 ```
-./qmljsreformatter Example.qml Example.new.qml
+$ ./qmljsreformatter Example.qml Example.new.qml
 ```
 
 or to overwrite the source file:
 
 ```
-./qmljsreformatter Example.qml Example.qml
+$ ./qmljsreformatter Example.qml Example.qml
 ```
 
 The resulting file will contain:
 
-```
+```qml
 // Example.qml
 import QtQuick 2.5
 

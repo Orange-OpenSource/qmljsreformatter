@@ -53,12 +53,12 @@ protected:
         BlockData data;
     };
 
-    virtual void saveBlockData(QTextBlock *block, const BlockData &data) const
+    void saveBlockData(QTextBlock *block, const BlockData &data) const override
     {
         block->setUserData(new FormatterData(data));
     }
 
-    virtual bool loadBlockData(const QTextBlock &block, BlockData *data) const
+    bool loadBlockData(const QTextBlock &block, BlockData *data) const override
     {
         if (!block.userData())
             return false;
@@ -67,12 +67,12 @@ protected:
         return true;
     }
 
-    virtual void saveLexerState(QTextBlock *block, int state) const
+    void saveLexerState(QTextBlock *block, int state) const override
     {
         block->setUserState(state);
     }
 
-    virtual int loadLexerState(const QTextBlock &block) const
+    int loadLexerState(const QTextBlock &block) const override
     {
         return block.userState();
     }
@@ -96,6 +96,7 @@ class Rewriter : protected Visitor
     int _lastNewlineOffset = -1;
     bool _hadEmptyLine = false;
     int _binaryExpDepth = 0;
+    bool _hasOpenComment = false;
 
 public:
     Rewriter(Document::Ptr doc)
@@ -173,8 +174,11 @@ protected:
         QStringList lines = str.split(QLatin1Char('\n'));
         bool multiline = lines.length() > 1;
         for (int i = 0; i < lines.size(); ++i) {
-            if (multiline)
+            if (multiline) {
+                if (i == 0)
+                    newLine();
                 _line = lines.at(i);  // multiline comments don't keep track of previos lines
+            }
             else
                 _line += lines.at(i);
             if (i != lines.size() - 1)
@@ -198,6 +202,9 @@ protected:
 
     void out(const QString &str, const SourceLocation &lastLoc = SourceLocation())
     {
+        if (_hasOpenComment) {
+            newLine();
+        }
         if (lastLoc.isValid()) {
             QList<SourceLocation> comments = _doc->engine()->comments();
             for (; _nextComment < comments.size(); ++_nextComment) {
@@ -368,6 +375,7 @@ protected:
     {
         // if preceded by a newline, it's an empty line!
         _hadEmptyLine = _line.trimmed().isEmpty();
+        _hasOpenComment = false;
 
         // if the preceding line wasn't empty, reindent etc.
         if (!_hadEmptyLine) {
@@ -464,7 +472,7 @@ protected:
             loc.length += 2;
     }
 
-    virtual bool preVisit(Node *ast)
+    bool preVisit(Node *ast) override
     {
         SourceLocation firstLoc;
         if (ExpressionNode *expr = ast->expressionCast())
@@ -486,7 +494,7 @@ protected:
         return true;
     }
 
-    virtual void postVisit(Node *ast)
+    void postVisit(Node *ast) override
     {
         SourceLocation lastLoc;
         if (ExpressionNode *expr = ast->expressionCast())
@@ -521,18 +529,51 @@ protected:
 
                 out(" ");
                 out(toString(nextCommentLoc));
+                _hasOpenComment = true;
             }
         }
     }
 
-    virtual bool visit(UiPragma *ast)
+    bool visit(UiPragma *ast) override
     {
         out("pragma ", ast->pragmaToken);
-        accept(ast->pragmaType);
+        out(ast->name.toString());
+        newLine();
         return false;
     }
 
-    virtual bool visit(UiImport *ast)
+    bool visit(UiEnumDeclaration *ast) override
+    {
+        out(ast->enumToken);
+        out(" ");
+        out(ast->name.toString());
+        out(" ");
+        out("{"); // TODO: out(ast->lbraceToken);
+        newLine();
+
+        accept(ast->members);
+
+        out(ast->rbraceToken);
+        return false;
+    }
+
+    bool visit(UiEnumMemberList *list) override
+    {
+        for (UiEnumMemberList *it = list; it; it = it->next) {
+            out(it->memberToken);
+            if (it->valueToken.isValid()) {
+                out(" = ");
+                out(it->valueToken);
+            }
+            if (it->next) {
+                out(",");
+            }
+            newLine();
+        }
+        return false;
+    }
+
+    bool visit(UiImport *ast) override
     {
         out("import ", ast->importToken);
         if (!ast->fileName.isNull())
@@ -550,7 +591,7 @@ protected:
         return false;
     }
 
-    virtual bool visit(UiObjectDefinition *ast)
+    bool visit(UiObjectDefinition *ast) override
     {
         accept(ast->qualifiedTypeNameId);
         out(" ");
@@ -558,17 +599,18 @@ protected:
         return false;
     }
 
-    virtual bool visit(UiObjectInitializer *ast)
+    bool visit(UiObjectInitializer *ast) override
     {
         out(ast->lbraceToken);
-        if (ast->members)
+        if (ast->members) {
             lnAcceptIndented(ast->members);
-        newLine();
+            newLine();
+        }
         out(ast->rbraceToken);
         return false;
     }
 
-    virtual bool visit(UiParameterList *list)
+    bool visit(UiParameterList *list) override
     {
         for (UiParameterList *it = list; it; it = it->next) {
             out(it->propertyTypeToken);
@@ -580,7 +622,7 @@ protected:
         return false;
     }
 
-    virtual bool visit(UiPublicMember *ast)
+    bool visit(UiPublicMember *ast) override
     {
         if (ast->type == UiPublicMember::Property) {
             if (ast->isDefaultMember)
@@ -591,10 +633,10 @@ protected:
             if (!ast->typeModifier.isNull()) {
                 out(ast->typeModifierToken);
                 out("<");
-                out(ast->typeToken);
+                accept(ast->memberType);
                 out(">");
             } else {
-                out(ast->typeToken);
+                accept(ast->memberType);
             }
             out(" ");
             if (ast->statement) {
@@ -618,7 +660,7 @@ protected:
         return false;
     }
 
-    virtual bool visit(UiObjectBinding *ast)
+    bool visit(UiObjectBinding *ast) override
     {
         if (ast->hasOnToken) {
             accept(ast->qualifiedTypeNameId);
@@ -634,7 +676,7 @@ protected:
         return false;
     }
 
-    virtual bool visit(UiScriptBinding *ast)
+    bool visit(UiScriptBinding *ast) override
     {
         accept(ast->qualifiedId);
         out(": ", ast->colonToken);
@@ -642,7 +684,7 @@ protected:
         return false;
     }
 
-    virtual bool visit(UiArrayBinding *ast)
+    bool visit(UiArrayBinding *ast) override
     {
         accept(ast->qualifiedId);
         out(ast->colonToken);
@@ -654,92 +696,92 @@ protected:
         return false;
     }
 
-    virtual bool visit(ThisExpression *ast) { out(ast->thisToken); return true; }
-    virtual bool visit(NullExpression *ast) { out(ast->nullToken); return true; }
-    virtual bool visit(TrueLiteral *ast) { out(ast->trueToken); return true; }
-    virtual bool visit(FalseLiteral *ast) { out(ast->falseToken); return true; }
-    virtual bool visit(IdentifierExpression *ast) { out(ast->identifierToken); return true; }
-    virtual bool visit(StringLiteral *ast) { out(ast->literalToken); return true; }
-    virtual bool visit(NumericLiteral *ast) { out(ast->literalToken); return true; }
-    virtual bool visit(RegExpLiteral *ast) { out(ast->literalToken); return true; }
+    bool visit(ThisExpression *ast) override { out(ast->thisToken); return true; }
+    bool visit(NullExpression *ast) override { out(ast->nullToken); return true; }
+    bool visit(TrueLiteral *ast) override { out(ast->trueToken); return true; }
+    bool visit(FalseLiteral *ast) override { out(ast->falseToken); return true; }
+    bool visit(IdentifierExpression *ast) override { out(ast->identifierToken); return true; }
+    bool visit(StringLiteral *ast) override { out(ast->literalToken); return true; }
+    bool visit(NumericLiteral *ast) override { out(ast->literalToken); return true; }
+    bool visit(RegExpLiteral *ast) override { out(ast->literalToken); return true; }
 
-    virtual bool visit(ArrayLiteral *ast)
+    bool visit(ArrayPattern *ast) override
     {
         out(ast->lbracketToken);
         if (ast->elements)
             accept(ast->elements);
-        if (ast->elements && ast->elision)
-            out(", ", ast->commaToken);
-        if (ast->elision)
-            accept(ast->elision);
         out(ast->rbracketToken);
         return false;
     }
 
-    virtual bool visit(ObjectLiteral *ast)
+    bool visit(ObjectPattern *ast) override
     {
         out(ast->lbraceToken);
-        lnAcceptIndented(ast->properties);
-        newLine();
+        if (ast->properties) {
+            lnAcceptIndented(ast->properties);
+            newLine();
+        }
         out(ast->rbraceToken);
         return false;
     }
 
-    virtual bool visit(ElementList *ast)
+    bool visit(PatternElementList *ast) override
     {
-        for (ElementList *it = ast; it; it = it->next) {
+        for (PatternElementList *it = ast; it; it = it->next) {
             if (it->elision)
                 accept(it->elision);
-            if (it->elision && it->expression)
+            if (it->elision && it->element)
                 out(", ");
-            if (it->expression)
-                accept(it->expression);
+            if (it->element)
+                accept(it->element);
             if (it->next)
-                out(", ", ast->commaToken);
+                out(", ");
         }
         return false;
     }
 
-    virtual bool visit(PropertyAssignmentList *ast)
+    bool visit(PatternPropertyList *ast) override
     {
-        for (PropertyAssignmentList *it = ast; it; it = it->next) {
-            PropertyNameAndValue *assignment = AST::cast<PropertyNameAndValue *>(it->assignment);
+        for (PatternPropertyList *it = ast; it; it = it->next) {
+            PatternProperty *assignment = AST::cast<PatternProperty *>(it->property);
             if (assignment) {
                 out("\"");
                 accept(assignment->name);
                 out("\"");
                 out(": ", assignment->colonToken);
-                accept(assignment->value);
+                accept(assignment->initializer);
                 if (it->next) {
-                    out(",", ast->commaToken); // always invalid?
+                    out(","); // always invalid?
                     newLine();
                 }
                 continue;
             }
-            PropertyGetterSetter *getterSetter = AST::cast<PropertyGetterSetter *>(it->assignment);
-            if (getterSetter) {
-                switch (getterSetter->type) {
-                case PropertyGetterSetter::Getter:
+            PatternPropertyList *getterSetter = AST::cast<PatternPropertyList *>(it->next);
+            if (getterSetter->property) {
+                switch (getterSetter->property->type) {
+                case PatternElement::Getter:
                     out("get");
                     break;
-                case PropertyGetterSetter::Setter:
+                case PatternElement::Setter:
                     out("set");
+                    break;
+                default:
                     break;
                 }
 
-                accept(getterSetter->name);
-                out("(", getterSetter->lparenToken);
-                accept(getterSetter->formals);
-                out("(", getterSetter->rparenToken);
-                out(" {", getterSetter->lbraceToken);
-                accept(getterSetter->functionBody);
-                out(" }", getterSetter->rbraceToken);
+                accept(getterSetter->property->name);
+                out("(");
+                //accept(getterSetter->formals);  // TODO
+                out(")");
+                out(" {");
+                //accept(getterSetter->functionBody);  // TODO
+                out(" }");
             }
         }
         return false;
     }
 
-    virtual bool visit(NestedExpression *ast)
+    bool visit(NestedExpression *ast) override
     {
         out(ast->lparenToken);
         accept(ast->expression);
@@ -747,11 +789,11 @@ protected:
         return false;
     }
 
-    virtual bool visit(IdentifierPropertyName *ast) { out(ast->id.toString()); return true; }
-    virtual bool visit(StringLiteralPropertyName *ast) { out(ast->id.toString()); return true; }
-    virtual bool visit(NumericLiteralPropertyName *ast) { out(QString::number(ast->id)); return true; }
+    bool visit(IdentifierPropertyName *ast) override { out(ast->id.toString()); return true; }
+    bool visit(StringLiteralPropertyName *ast) override { out(ast->id.toString()); return true; }
+    bool visit(NumericLiteralPropertyName *ast) override { out(QString::number(ast->id)); return true; }
 
-    virtual bool visit(ArrayMemberExpression *ast)
+    bool visit(ArrayMemberExpression *ast) override
     {
         accept(ast->base);
         out(ast->lbracketToken);
@@ -760,7 +802,7 @@ protected:
         return false;
     }
 
-    virtual bool visit(FieldMemberExpression *ast)
+    bool visit(FieldMemberExpression *ast) override
     {
         accept(ast->base);
         out(ast->dotToken);
@@ -768,7 +810,7 @@ protected:
         return false;
     }
 
-    virtual bool visit(NewMemberExpression *ast)
+    bool visit(NewMemberExpression *ast) override
     {
         out("new ", ast->newToken);
         accept(ast->base);
@@ -778,14 +820,14 @@ protected:
         return false;
     }
 
-    virtual bool visit(NewExpression *ast)
+    bool visit(NewExpression *ast) override
     {
         out("new ", ast->newToken);
         accept(ast->expression);
         return false;
     }
 
-    virtual bool visit(CallExpression *ast)
+    bool visit(CallExpression *ast) override
     {
         accept(ast->base);
         out(ast->lparenToken);
@@ -795,84 +837,84 @@ protected:
         return false;
     }
 
-    virtual bool visit(PostIncrementExpression *ast)
+    bool visit(PostIncrementExpression *ast) override
     {
         accept(ast->base);
         out(ast->incrementToken);
         return false;
     }
 
-    virtual bool visit(PostDecrementExpression *ast)
+    bool visit(PostDecrementExpression *ast) override
     {
         accept(ast->base);
         out(ast->decrementToken);
         return false;
     }
 
-    virtual bool visit(PreIncrementExpression *ast)
+    bool visit(PreIncrementExpression *ast) override
     {
         out(ast->incrementToken);
         accept(ast->expression);
         return false;
     }
 
-    virtual bool visit(PreDecrementExpression *ast)
+    bool visit(PreDecrementExpression *ast) override
     {
         out(ast->decrementToken);
         accept(ast->expression);
         return false;
     }
 
-    virtual bool visit(DeleteExpression *ast)
+    bool visit(DeleteExpression *ast) override
     {
         out("delete ", ast->deleteToken);
         accept(ast->expression);
         return false;
     }
 
-    virtual bool visit(VoidExpression *ast)
+    bool visit(VoidExpression *ast) override
     {
         out("void ", ast->voidToken);
         accept(ast->expression);
         return false;
     }
 
-    virtual bool visit(TypeOfExpression *ast)
+    bool visit(TypeOfExpression *ast) override
     {
         out("typeof ", ast->typeofToken);
         accept(ast->expression);
         return false;
     }
 
-    virtual bool visit(UnaryPlusExpression *ast)
+    bool visit(UnaryPlusExpression *ast) override
     {
         out(ast->plusToken);
         accept(ast->expression);
         return false;
     }
 
-    virtual bool visit(UnaryMinusExpression *ast)
+    bool visit(UnaryMinusExpression *ast) override
     {
         out(ast->minusToken);
         accept(ast->expression);
         return false;
     }
 
-    virtual bool visit(TildeExpression *ast)
+    bool visit(TildeExpression *ast) override
     {
         out(ast->tildeToken);
         accept(ast->expression);
         return false;
     }
 
-    virtual bool visit(NotExpression *ast)
+    bool visit(NotExpression *ast) override
     {
         out(ast->notToken);
         accept(ast->expression);
         return false;
     }
 
-    virtual bool visit(BinaryExpression *ast)
+    bool visit(BinaryExpression *ast) override
     {
         ++_binaryExpDepth;
         accept(ast->left);
@@ -893,7 +935,7 @@ protected:
         return false;
     }
 
-    virtual bool visit(ConditionalExpression *ast)
+    bool visit(ConditionalExpression *ast) override
     {
         accept(ast->expression);
         out(" ? ", ast->questionToken);
@@ -903,7 +945,7 @@ protected:
         return false;
     }
 
-    virtual bool visit(Block *ast)
+    bool visit(Block *ast) override
     {
         out(ast->lbraceToken);
         lnAcceptIndented(ast->statements);
@@ -912,30 +954,41 @@ protected:
         return false;
     }
 
-    virtual bool visit(VariableStatement *ast)
+    bool visit(VariableStatement *ast) override
     {
-        out("var ", ast->declarationKindToken);
+        out(ast->declarationKindToken);
+        out(" ");
         accept(ast->declarations);
         return false;
     }
 
-    virtual bool visit(VariableDeclaration *ast)
+    bool visit(PatternElement *ast) override
     {
+        if (ast->isForDeclaration) {
+            if (ast->scope == VariableScope::Var) {
+                out("var ");
+            } else if (ast->scope == VariableScope::Let) {
+                out("let ");
+            } else if (ast->scope == VariableScope::Const) {
+                out("const ");
+            }
+        }
         out(ast->identifierToken);
-        if (ast->expression) {
-            out(" = ");
-            accept(ast->expression);
+        if (ast->initializer) {
+            if (ast->isVariableDeclaration())
+                out(" = ");
+            accept(ast->initializer);
         }
         return false;
     }
 
-    virtual bool visit(EmptyStatement *ast)
+    bool visit(EmptyStatement *ast) override
     {
         out(ast->semicolonToken);
         return false;
     }
 
-    virtual bool visit(IfStatement *ast)
+    bool visit(IfStatement *ast) override
     {
         out(ast->ifToken);
         out(" ");
@@ -955,7 +1008,7 @@ protected:
         return false;
     }
 
-    virtual bool visit(DoWhileStatement *ast)
+    bool visit(DoWhileStatement *ast) override
     {
         out(ast->doToken);
         acceptBlockOrIndented(ast->statement, true);
@@ -967,7 +1020,7 @@ protected:
         return false;
     }
 
-    virtual bool visit(WhileStatement *ast)
+    bool visit(WhileStatement *ast) override
     {
         out(ast->whileToken);
         out(" ");
@@ -978,12 +1031,17 @@ protected:
         return false;
     }
 
-    virtual bool visit(ForStatement *ast)
+    bool visit(ForStatement *ast) override
     {
         out(ast->forToken);
         out(" ");
         out(ast->lparenToken);
-        accept(ast->initialiser);
+        if (ast->initialiser) {
+            accept(ast->initialiser);
+        } else if (ast->declarations) {
+            out("var ");
+            accept(ast->declarations);
+        }
         out("; ", ast->firstSemicolonToken);
         accept(ast->condition);
         out("; ", ast->secondSemicolonToken);
@@ -993,52 +1051,20 @@ protected:
         return false;
     }
 
-    virtual bool visit(LocalForStatement *ast)
+    bool visit(ForEachStatement *ast) override
     {
         out(ast->forToken);
         out(" ");
         out(ast->lparenToken);
-        out(ast->varToken);
-        out(" ");
-        accept(ast->declarations);
-        out("; ", ast->firstSemicolonToken);
-        accept(ast->condition);
-        out("; ", ast->secondSemicolonToken);
-        accept(ast->expression);
-        out(")", ast->rparenToken);
-        acceptBlockOrIndented(ast->statement);
-        return false;
-    }
-
-    virtual bool visit(ForEachStatement *ast)
-    {
-        out(ast->forToken);
-        out(" ");
-        out(ast->lparenToken);
-        accept(ast->initialiser);
-        out(" in ", ast->inToken);
+        accept(ast->lhs);
+        out(" in ");
         accept(ast->expression);
         out(ast->rparenToken);
         acceptBlockOrIndented(ast->statement);
         return false;
     }
 
-    virtual bool visit(LocalForEachStatement *ast)
-    {
-        out(ast->forToken);
-        out(" ");
-        out(ast->lparenToken);
-        out(ast->varToken);
-        out(" ");
-        accept(ast->declaration);
-        out(" in ", ast->inToken);
-        accept(ast->expression);
-        out(ast->rparenToken);
-        acceptBlockOrIndented(ast->statement);
-        return false;
-    }
-
-    virtual bool visit(ContinueStatement *ast)
+    bool visit(ContinueStatement *ast) override
     {
         out(ast->continueToken);
         if (!ast->label.isNull()) {
@@ -1048,7 +1074,7 @@ protected:
         return false;
     }
 
-    virtual bool visit(BreakStatement *ast)
+    bool visit(BreakStatement *ast) override
     {
         out(ast->breakToken);
         if (!ast->label.isNull()) {
@@ -1058,7 +1084,7 @@ protected:
         return false;
     }
 
-    virtual bool visit(ReturnStatement *ast)
+    bool visit(ReturnStatement *ast) override
     {
         out(ast->returnToken);
         if (ast->expression) {
@@ -1068,7 +1094,7 @@ protected:
         return false;
     }
 
-    virtual bool visit(ThrowStatement *ast)
+    bool visit(ThrowStatement *ast) override
     {
         out(ast->throwToken);
         if (ast->expression) {
@@ -1078,7 +1104,7 @@ protected:
         return false;
     }
 
-    virtual bool visit(WithStatement *ast)
+    bool visit(WithStatement *ast) override
     {
         out(ast->withToken);
         out(" ");
@@ -1089,7 +1115,7 @@ protected:
         return false;
     }
 
-    virtual bool visit(SwitchStatement *ast)
+    bool visit(SwitchStatement *ast) override
     {
         out(ast->switchToken);
         out(" ");
@@ -1101,7 +1127,7 @@ protected:
         return false;
     }
 
-    virtual bool visit(CaseBlock *ast)
+    bool visit(CaseBlock *ast) override
     {
         out(ast->lbraceToken);
         newLine();
@@ -1117,7 +1143,7 @@ protected:
         return false;
     }
 
-    virtual bool visit(CaseClause *ast)
+    bool visit(CaseClause *ast) override
     {
         out("case ", ast->caseToken);
         accept(ast->expression);
@@ -1127,7 +1153,7 @@ protected:
         return false;
     }
 
-    virtual bool visit(DefaultClause *ast)
+    bool visit(DefaultClause *ast) override
     {
         out(ast->defaultToken);
         out(ast->colonToken);
@@ -1135,7 +1161,7 @@ protected:
         return false;
     }
 
-    virtual bool visit(LabelledStatement *ast)
+    bool visit(LabelledStatement *ast) override
     {
         out(ast->identifierToken);
         out(": ", ast->colonToken);
@@ -1143,7 +1169,7 @@ protected:
         return false;
     }
 
-    virtual bool visit(TryStatement *ast)
+    bool visit(TryStatement *ast) override
     {
         out("try ", ast->tryToken);
         accept(ast->statement);
@@ -1158,7 +1184,7 @@ protected:
         return false;
     }
 
-    virtual bool visit(Catch *ast)
+    bool visit(Catch *ast) override
     {
         out(ast->catchToken);
         out(" ");
@@ -1169,19 +1195,19 @@ protected:
         return false;
     }
 
-    virtual bool visit(Finally *ast)
+    bool visit(Finally *ast) override
     {
         out("finally ", ast->finallyToken);
         accept(ast->statement);
         return false;
     }
 
-    virtual bool visit(FunctionDeclaration *ast)
+    bool visit(FunctionDeclaration *ast) override
     {
         return visit(static_cast<FunctionExpression *>(ast));
     }
 
-    virtual bool visit(FunctionExpression *ast)
+    bool visit(FunctionExpression *ast) override
     {
         out("function ", ast->functionToken);
         if (!ast->name.isNull())
@@ -1200,7 +1226,7 @@ protected:
     }
 
 
-    virtual bool visit(UiHeaderItemList *ast)
+    bool visit(UiHeaderItemList *ast) override
     {
         for (UiHeaderItemList *it = ast; it; it = it->next) {
             accept(it->headerItem);
@@ -1210,7 +1236,7 @@ protected:
         return false;
     }
 
-    virtual bool visit(UiObjectMemberList *ast)
+    bool visit(UiObjectMemberList *ast) override
     {
         for (UiObjectMemberList *it = ast; it; it = it->next) {
             accept(it->member);
@@ -1220,7 +1246,7 @@ protected:
         return false;
     }
 
-    virtual bool visit(UiArrayMemberList *ast)
+    bool visit(UiArrayMemberList *ast) override
     {
         for (UiArrayMemberList *it = ast; it; it = it->next) {
             accept(it->member);
@@ -1232,7 +1258,7 @@ protected:
         return false;
     }
 
-    virtual bool visit(UiQualifiedId *ast)
+    bool visit(UiQualifiedId *ast) override
     {
         for (UiQualifiedId *it = ast; it; it = it->next) {
             out(it->identifierToken);
@@ -1242,13 +1268,7 @@ protected:
         return false;
     }
 
-    virtual bool visit(UiQualifiedPragmaId *ast)
-    {
-        out(ast->identifierToken);
-        return false;
-    }
-
-    virtual bool visit(Elision *ast)
+    bool visit(Elision *ast) override
     {
         for (Elision *it = ast; it; it = it->next) {
             if (it->next)
@@ -1257,7 +1277,7 @@ protected:
         return false;
     }
 
-    virtual bool visit(ArgumentList *ast)
+    bool visit(ArgumentList *ast) override
     {
         for (ArgumentList *it = ast; it; it = it->next) {
             accept(it->expression);
@@ -1269,7 +1289,7 @@ protected:
         return false;
     }
 
-    virtual bool visit(StatementList *ast)
+    bool visit(StatementList *ast) override
     {
         for (StatementList *it = ast; it; it = it->next) {
             // ### work around parser bug: skip empty statements with wrong tokens
@@ -1285,17 +1305,7 @@ protected:
         return false;
     }
 
-    virtual bool visit(SourceElements *ast)
-    {
-        for (SourceElements *it = ast; it; it = it->next) {
-            accept(it->element);
-            if (it->next)
-                newLine();
-        }
-        return false;
-    }
-
-    virtual bool visit(VariableDeclarationList *ast)
+    bool visit(VariableDeclarationList *ast) override
     {
         for (VariableDeclarationList *it = ast; it; it = it->next) {
             accept(it->declaration);
@@ -1305,7 +1315,7 @@ protected:
         return false;
     }
 
-    virtual bool visit(CaseClauses *ast)
+    bool visit(CaseClauses *ast) override
     {
         for (CaseClauses *it = ast; it; it = it->next) {
             accept(it->clause);
@@ -1315,12 +1325,12 @@ protected:
         return false;
     }
 
-    virtual bool visit(FormalParameterList *ast)
+    bool visit(FormalParameterList *ast) override
     {
         for (FormalParameterList *it = ast; it; it = it->next) {
-            if (it->commaToken.isValid())
-                out(", ", it->commaToken);
-            out(it->identifierToken);
+            out(it->element->bindingIdentifier.toString()); // TODO
+            if (it->next)
+                out(", ");
         }
         return false;
     }

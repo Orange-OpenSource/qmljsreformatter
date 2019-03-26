@@ -98,7 +98,7 @@ bool SettingsAccessor::saveSettings(const QVariantMap &data, QWidget *parent) co
 /*!
  * Read data from \a path. Do all the necessary postprocessing of the data.
  */
-SettingsAccessor::RestoreData SettingsAccessor::readData(const FileName &path, QWidget *parent) const
+SettingsAccessor::RestoreData SettingsAccessor::readData(const FilePath &path, QWidget *parent) const
 {
     Q_UNUSED(parent);
     RestoreData result = readFile(path);
@@ -110,14 +110,14 @@ SettingsAccessor::RestoreData SettingsAccessor::readData(const FileName &path, Q
 /*!
  * Store the \a data in \a path on disk. Do all the necessary preprocessing of the data.
  */
-Utils::optional<SettingsAccessor::Issue>
-SettingsAccessor::writeData(const FileName &path, const QVariantMap &data, QWidget *parent) const
+optional<SettingsAccessor::Issue>
+SettingsAccessor::writeData(const FilePath &path, const QVariantMap &data, QWidget *parent) const
 {
     Q_UNUSED(parent);
     return writeFile(path, prepareToWriteSettings(data));
 }
 
-QVariantMap SettingsAccessor::restoreSettings(const FileName &settingsPath, QWidget *parent) const
+QVariantMap SettingsAccessor::restoreSettings(const FilePath &settingsPath, QWidget *parent) const
 {
     const RestoreData result = readData(settingsPath, parent);
 
@@ -131,7 +131,7 @@ QVariantMap SettingsAccessor::restoreSettings(const FileName &settingsPath, QWid
  *
  * This method does not do *any* processing of the file contents.
  */
-SettingsAccessor::RestoreData SettingsAccessor::readFile(const FileName &path) const
+SettingsAccessor::RestoreData SettingsAccessor::readFile(const FilePath &path) const
 {
     PersistentSettingsReader reader;
     if (!reader.load(path)) {
@@ -155,8 +155,8 @@ SettingsAccessor::RestoreData SettingsAccessor::readFile(const FileName &path) c
  *
  * This method does not do *any* processing of the file contents.
  */
-Utils::optional<SettingsAccessor::Issue>
-SettingsAccessor::writeFile(const FileName &path, const QVariantMap &data) const
+optional<SettingsAccessor::Issue>
+SettingsAccessor::writeFile(const FilePath &path, const QVariantMap &data) const
 {
     if (data.isEmpty()) {
         return Issue(QCoreApplication::translate("Utils::SettingsAccessor", "Failed to Write File"),
@@ -176,7 +176,7 @@ SettingsAccessor::writeFile(const FileName &path, const QVariantMap &data) const
 }
 
 SettingsAccessor::ProceedInfo
-SettingsAccessor::reportIssues(const SettingsAccessor::Issue &issue, const FileName &path,
+SettingsAccessor::reportIssues(const SettingsAccessor::Issue &issue, const FilePath &path,
                                QWidget *parent) const
 {
     if (!path.exists())
@@ -217,14 +217,14 @@ QVariantMap SettingsAccessor::prepareToWriteSettings(const QVariantMap &data) co
 // BackingUpSettingsAccessor:
 // --------------------------------------------------------------------
 
-FileNameList BackUpStrategy::readFileCandidates(const FileName &baseFileName) const
+FilePathList BackUpStrategy::readFileCandidates(const FilePath &baseFileName) const
 {
 
     const QFileInfo pfi = baseFileName.toFileInfo();
     const QStringList filter(pfi.fileName() + '*');
     const QFileInfoList list = QDir(pfi.dir()).entryInfoList(filter, QDir::Files | QDir::Hidden | QDir::System);
 
-    return Utils::transform(list, [](const QFileInfo &fi) { return FileName::fromString(fi.absoluteFilePath()); });
+    return Utils::transform(list, [](const QFileInfo &fi) { return FilePath::fromString(fi.absoluteFilePath()); });
 }
 
 int BackUpStrategy::compare(const SettingsAccessor::RestoreData &data1,
@@ -239,14 +239,12 @@ int BackUpStrategy::compare(const SettingsAccessor::RestoreData &data1,
     return 0;
 }
 
-Utils::optional<Utils::FileName>
-BackUpStrategy::backupName(const QVariantMap &oldData, const FileName &path, const QVariantMap &data) const
+optional<FilePath>
+BackUpStrategy::backupName(const QVariantMap &oldData, const FilePath &path, const QVariantMap &data) const
 {
     if (oldData == data)
-        return Utils::nullopt;
-    FileName backup = path;
-    backup.appendString(".bak");
-    return backup;
+        return nullopt;
+    return path.stringAppended(".bak");
 }
 
 BackingUpSettingsAccessor::BackingUpSettingsAccessor(const QString &docType,
@@ -264,9 +262,9 @@ BackingUpSettingsAccessor::BackingUpSettingsAccessor(std::unique_ptr<BackUpStrat
 { }
 
 SettingsAccessor::RestoreData
-BackingUpSettingsAccessor::readData(const Utils::FileName &path, QWidget *parent) const
+BackingUpSettingsAccessor::readData(const FilePath &path, QWidget *parent) const
 {
-    const FileNameList fileList = readFileCandidates(path);
+    const FilePathList fileList = readFileCandidates(path);
     if (fileList.isEmpty()) // No settings found at all.
         return RestoreData(path, QVariantMap());
 
@@ -288,8 +286,8 @@ BackingUpSettingsAccessor::readData(const Utils::FileName &path, QWidget *parent
     return result;
 }
 
-Utils::optional<SettingsAccessor::Issue>
-BackingUpSettingsAccessor::writeData(const Utils::FileName &path, const QVariantMap &data,
+optional<SettingsAccessor::Issue>
+BackingUpSettingsAccessor::writeData(const FilePath &path, const QVariantMap &data,
                                      QWidget *parent) const
 {
     if (data.isEmpty())
@@ -300,9 +298,9 @@ BackingUpSettingsAccessor::writeData(const Utils::FileName &path, const QVariant
     return SettingsAccessor::writeData(path, data, parent);
 }
 
-FileNameList BackingUpSettingsAccessor::readFileCandidates(const Utils::FileName &path) const
+FilePathList BackingUpSettingsAccessor::readFileCandidates(const FilePath &path) const
 {
-    FileNameList result = Utils::filteredUnique(m_strategy->readFileCandidates(path));
+    FilePathList result = Utils::filteredUnique(m_strategy->readFileCandidates(path));
     if (result.removeOne(baseFilePath()))
         result.prepend(baseFilePath());
 
@@ -310,10 +308,10 @@ FileNameList BackingUpSettingsAccessor::readFileCandidates(const Utils::FileName
 }
 
 SettingsAccessor::RestoreData
-BackingUpSettingsAccessor::bestReadFileData(const FileNameList &candidates, QWidget *parent) const
+BackingUpSettingsAccessor::bestReadFileData(const FilePathList &candidates, QWidget *parent) const
 {
     SettingsAccessor::RestoreData bestMatch;
-    for (const FileName &c : candidates) {
+    for (const FilePath &c : candidates) {
         RestoreData cData = SettingsAccessor::readData(c, parent);
         if (m_strategy->compare(bestMatch, cData) > 0)
             bestMatch = cData;
@@ -321,7 +319,7 @@ BackingUpSettingsAccessor::bestReadFileData(const FileNameList &candidates, QWid
     return bestMatch;
 }
 
-void BackingUpSettingsAccessor::backupFile(const FileName &path, const QVariantMap &data,
+void BackingUpSettingsAccessor::backupFile(const FilePath &path, const QVariantMap &data,
                                            QWidget *parent) const
 {
     RestoreData oldSettings = SettingsAccessor::readData(path, parent);
@@ -330,7 +328,7 @@ void BackingUpSettingsAccessor::backupFile(const FileName &path, const QVariantM
 
     // Do we need to do a backup?
     const QString origName = path.toString();
-    optional<FileName> backupFileName = m_strategy->backupName(oldSettings.data, path, data);
+    optional<FilePath> backupFileName = m_strategy->backupName(oldSettings.data, path, data);
     if (backupFileName)
         QFile::copy(origName, backupFileName.value().toString());
 }
@@ -361,22 +359,23 @@ int VersionedBackUpStrategy::compare(const SettingsAccessor::RestoreData &data1,
     return -1;
 }
 
-optional<FileName>
-VersionedBackUpStrategy::backupName(const QVariantMap &oldData, const FileName &path, const QVariantMap &data) const
+optional<FilePath>
+VersionedBackUpStrategy::backupName(const QVariantMap &oldData, const FilePath &path, const QVariantMap &data) const
 {
     Q_UNUSED(data);
-    FileName backupName = path;
+    FilePath backupName = path;
     const QByteArray oldEnvironmentId = settingsIdFromMap(oldData);
     const int oldVersion = versionFromMap(oldData);
 
     if (!oldEnvironmentId.isEmpty() && oldEnvironmentId != m_accessor->settingsId())
-        backupName.appendString('.' + QString::fromLatin1(oldEnvironmentId).mid(1, 7));
+        backupName = backupName.stringAppended
+                ('.' + QString::fromLatin1(oldEnvironmentId).mid(1, 7));
     if (oldVersion != m_accessor->currentVersion()) {
         VersionUpgrader *upgrader = m_accessor->upgrader(oldVersion);
         if (upgrader)
-            backupName.appendString('.' + upgrader->backupExtension());
+            backupName = backupName.stringAppended('.' + upgrader->backupExtension());
         else
-            backupName.appendString('.' + QString::number(oldVersion));
+            backupName = backupName.stringAppended('.' + QString::number(oldVersion));
     }
     if (backupName == path)
         return nullopt;
@@ -464,7 +463,7 @@ bool UpgradingSettingsAccessor::isValidVersionAndId(const int version, const QBy
             && (id.isEmpty() || id == m_id || m_id.isEmpty());
 }
 
-SettingsAccessor::RestoreData UpgradingSettingsAccessor::readData(const FileName &path,
+SettingsAccessor::RestoreData UpgradingSettingsAccessor::readData(const FilePath &path,
                                                                   QWidget *parent) const
 {
     return upgradeSettings(BackingUpSettingsAccessor::readData(path, parent), currentVersion());
@@ -507,7 +506,7 @@ VersionUpgrader *UpgradingSettingsAccessor::upgrader(const int version) const
 SettingsAccessor::RestoreData
 UpgradingSettingsAccessor::upgradeSettings(const RestoreData &data, const int targetVersion) const
 {
-    if (data.hasError())
+    if (data.hasError() || data.data.isEmpty())
         return data;
 
     QTC_ASSERT(targetVersion >= firstSupportedVersion(), return data);
@@ -535,6 +534,8 @@ SettingsAccessor::RestoreData
 UpgradingSettingsAccessor::validateVersionRange(const RestoreData &data) const
 {
     RestoreData result = data;
+    if (data.data.isEmpty())
+        return result;
     const int version = versionFromMap(result.data);
     if (version < firstSupportedVersion() || version > currentVersion()) {
         Issue i(QApplication::translate("Utils::SettingsAccessor", "No Valid Settings Found"),
@@ -548,7 +549,8 @@ UpgradingSettingsAccessor::validateVersionRange(const RestoreData &data) const
         return result;
     }
 
-    if (result.path != baseFilePath() && version < currentVersion()) {
+    if (result.path != baseFilePath() && !result.path.endsWith(".shared")
+            && version < currentVersion()) {
         Issue i(QApplication::translate("Utils::SettingsAccessor", "Using Old Settings"),
                 QApplication::translate("Utils::SettingsAccessor",
                                         "<p>The versioned backup \"%1\" of the settings "
@@ -578,6 +580,7 @@ UpgradingSettingsAccessor::validateVersionRange(const RestoreData &data) const
                 .arg(applicationDisplayName).arg(result.path.toUserOutput()), Issue::Type::WARNING);
         i.defaultButton = QMessageBox::No;
         i.escapeButton = QMessageBox::No;
+        i.buttons.clear();
         i.buttons.insert(QMessageBox::Yes, Continue);
         i.buttons.insert(QMessageBox::No, DiscardAndContinue);
         result.issue = i;
@@ -602,7 +605,7 @@ MergingSettingsAccessor::MergingSettingsAccessor(std::unique_ptr<BackUpStrategy>
     UpgradingSettingsAccessor(std::move(strategy), docType, displayName, applicationDisplayName)
 { }
 
-SettingsAccessor::RestoreData MergingSettingsAccessor::readData(const FileName &path,
+SettingsAccessor::RestoreData MergingSettingsAccessor::readData(const FilePath &path,
                                                                 QWidget *parent) const
 {
     RestoreData mainData = UpgradingSettingsAccessor::readData(path, parent); // FULLY upgraded!
@@ -615,6 +618,7 @@ SettingsAccessor::RestoreData MergingSettingsAccessor::readData(const FileName &
     RestoreData secondaryData
             = m_secondaryAccessor ? m_secondaryAccessor->readData(m_secondaryAccessor->baseFilePath(), parent)
                                   : RestoreData();
+    secondaryData.data = preprocessReadSettings(secondaryData.data);
     int secondaryVersion = versionFromMap(secondaryData.data);
     if (secondaryVersion == -1)
         secondaryVersion = currentVersion(); // No version information, use currentVersion since
@@ -631,14 +635,16 @@ SettingsAccessor::RestoreData MergingSettingsAccessor::readData(const FileName &
         secondaryData.issue = Issue(QApplication::translate("Utils::SettingsAccessor",
                                                             "Unsupported Merge Settings File"),
                                     QApplication::translate("Utils::SettingsAccessor",
-                                                            "\"%1\" is not supported by %1. "
+                                                            "\"%1\" is not supported by %2. "
                                                             "Do you want to try loading it anyway?")
                                     .arg(secondaryData.path.toUserOutput())
                                     .arg(applicationDisplayName), Issue::Type::WARNING);
+        secondaryData.issue->buttons.clear();
         secondaryData.issue->buttons.insert(QMessageBox::Yes, Continue);
         secondaryData.issue->buttons.insert(QMessageBox::No, DiscardAndContinue);
         secondaryData.issue->defaultButton = QMessageBox::No;
         secondaryData.issue->escapeButton = QMessageBox::No;
+        setVersionInMap(secondaryData.data, std::max(secondaryVersion, firstSupportedVersion()));
     }
 
     if (secondaryData.hasIssue()) {
@@ -752,7 +758,7 @@ static QVariant mergeQVariantMapsRecursion(const QVariantMap &mainTree, const QV
         global.key = keyPrefix + key;
         local.key = key;
 
-        Utils::optional<QPair<QString, QVariant>> mergeResult = merge(global, local);
+        optional<QPair<QString, QVariant>> mergeResult = merge(global, local);
         if (!mergeResult)
             continue;
 

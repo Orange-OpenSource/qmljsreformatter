@@ -53,6 +53,11 @@
 #define unittest_public private
 #endif
 
+#if defined(__GNUC__) && !defined(__clang__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
+#endif
+
 namespace Utils {
 
 template<uint Size>
@@ -146,7 +151,7 @@ public:
     {
     }
 
-    BasicSmallString(std::initializer_list<Utils::SmallStringView> list)
+    BasicSmallString(std::initializer_list<SmallStringView> list)
         : m_data(Internal::StringDataLayout<Size>())
     {
         appendInitializerList(list, 0);
@@ -615,7 +620,13 @@ public:
 
     friend BasicSmallString operator+(SmallStringView first, const BasicSmallString &second)
     {
-        return operator+(second, first);
+        BasicSmallString text;
+        text.reserve(first.size() + second.size());
+
+        text.append(first);
+        text.append(second);
+
+        return text;
     }
 
     template<size_type ArraySize>
@@ -695,7 +706,7 @@ private:
 
     void appendInitializerList(std::initializer_list<SmallStringView> list, std::size_t initialSize)
     {
-        auto addSize =  [] (std::size_t size, Utils::SmallStringView string) {
+        auto addSize =  [] (std::size_t size, SmallStringView string) {
             return size + string.size();
         };
 
@@ -706,7 +717,7 @@ private:
 
         char *currentData = data() + initialSize;
 
-        for (Utils::SmallStringView string : list) {
+        for (SmallStringView string : list) {
             std::memcpy(currentData, string.data(), string.size());
             currentData += string.size();
         }
@@ -970,3 +981,7 @@ SmallString operator+(const char(&first)[Size], SmallStringView second)
 }
 
 } // namespace Utils
+
+#if defined(__GNUC__) && !defined(__clang__)
+#pragma GCC diagnostic pop
+#endif

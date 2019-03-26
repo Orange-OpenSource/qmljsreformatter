@@ -29,54 +29,85 @@
 #include <utils/fileutils.h>
 
 #include <QHash>
+#include <QSharedPointer>
 #include <QStringList>
 
 QT_FORWARD_DECLARE_CLASS(QUrl)
 
 namespace Utils {
+class QrcParser;
 
 class QTCREATOR_UTILS_EXPORT FileInProjectFinder
 {
 public:
-    enum FindMode {
-        FindFile      = 0x1,
-        FindDirectory = 0x2,
-        FindEither    = FindFile | FindDirectory
-    };
+
+    using FileHandler = std::function<void(const QString &, int)>;
+    using DirectoryHandler = std::function<void(const QStringList &, int)>;
 
     FileInProjectFinder();
+    ~FileInProjectFinder();
 
-    void setProjectDirectory(const QString &absoluteProjectPath);
-    QString projectDirectory() const;
+    void setProjectDirectory(const FilePath &absoluteProjectPath);
+    FilePath projectDirectory() const;
 
-    void setProjectFiles(const Utils::FileNameList &projectFiles);
-    void setSysroot(const QString &sysroot);
+    void setProjectFiles(const FilePathList &projectFiles);
+    void setSysroot(const FilePath &sysroot);
 
-    QString findFile(const QUrl &fileUrl, bool *success = nullptr) const;
-    QString findFileOrDirectory(const QString &originalPath, FindMode findMode,
-                                bool *success) const;
+    void addMappedPath(const FilePath &localFilePath, const QString &remoteFilePath);
 
-    QStringList searchDirectories() const;
-    void setAdditionalSearchDirectories(const QStringList &searchDirectories);
+    FilePathList findFile(const QUrl &fileUrl, bool *success = nullptr) const;
+    bool findFileOrDirectory(const QString &originalPath, FileHandler fileHandler = nullptr,
+                             DirectoryHandler directoryHandler = nullptr) const;
+
+    FilePathList searchDirectories() const;
+    void setAdditionalSearchDirectories(const FilePathList &searchDirectories);
 
 private:
-    QString findInSearchPaths(const QString &filePath, FindMode findMode, bool *success) const;
-    static QString findInSearchPath(const QString &searchPath, const QString &filePath,
-                                    FindMode findMode, bool *success);
+    struct PathMappingNode
+    {
+        ~PathMappingNode();
+        FilePath localPath;
+        QHash<QString, PathMappingNode *> children;
+    };
+
+    struct CacheEntry {
+        QStringList paths;
+        int matchLength = 0;
+    };
+
+    class QrcUrlFinder {
+    public:
+        FilePathList find(const QUrl &fileUrl) const;
+        void setProjectFiles(const FilePathList &projectFiles);
+    private:
+        FilePathList m_allQrcFiles;
+        mutable QHash<QUrl, FilePathList> m_fileCache;
+        mutable QHash<FilePath, QSharedPointer<QrcParser>> m_parserCache;
+    };
+
+    CacheEntry findInSearchPaths(const QString &filePath, FileHandler fileHandler,
+                                 DirectoryHandler directoryHandler) const;
+    static CacheEntry findInSearchPath(const QString &searchPath, const QString &filePath,
+                                       FileHandler fileHandler, DirectoryHandler directoryHandler);
     QStringList filesWithSameFileName(const QString &fileName) const;
     QStringList pathSegmentsWithSameName(const QString &path) const;
 
-    QString handleSuccess(const QString &originalPath, const QString &found, bool *success,
-                          const char *where, bool doCache = true) const;
+    bool handleSuccess(const QString &originalPath, const QStringList &found, int confidence,
+                       const char *where) const;
 
-    static int rankFilePath(const QString &candidatePath, const QString &filePathToFind);
-    static QString bestMatch(const QStringList &filePaths, const QString &filePathToFind);
+    static int commonPostFixLength(const QString &candidatePath, const QString &filePathToFind);
+    static QStringList bestMatches(const QStringList &filePaths, const QString &filePathToFind);
 
-    QString m_projectDir;
-    QString m_sysroot;
-    Utils::FileNameList m_projectFiles;
-    QStringList m_searchDirectories;
-    mutable QHash<QString,QString> m_cache;
+    FilePath m_projectDir;
+    FilePath m_sysroot;
+    FilePathList m_projectFiles;
+    FilePathList m_searchDirectories;
+    PathMappingNode m_pathMapRoot;
+
+    mutable QHash<QString, CacheEntry> m_cache;
+    QrcUrlFinder m_qrcUrlFinder;
 };
+
+QTCREATOR_UTILS_EXPORT FilePath chooseFileFromList(const FilePathList &candidates);
 
 } // namespace Utils

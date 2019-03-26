@@ -48,7 +48,7 @@ public:
     /* The widget passed in should have an objectname set
      * which will then be used as key for QSettings. */
     QDockWidget *addDockForWidget(QWidget *widget, bool immutable = false);
-    QList<QDockWidget *> dockWidgets() const;
+    const QList<QDockWidget *> dockWidgets() const;
 
     void setTrackingEnabled(bool enabled);
 
@@ -66,6 +66,10 @@ public:
     void addDockActionsToMenu(QMenu *menu);
 
     bool autoHideTitleBars() const;
+    void setAutoHideTitleBars(bool on);
+
+    bool isCentralWidgetShown() const;
+    void showCentralWidget(bool on);
 
 signals:
     // Emitted by resetLayoutAction(). Connect to a slot

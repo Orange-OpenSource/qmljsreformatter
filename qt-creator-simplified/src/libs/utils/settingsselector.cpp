@@ -41,7 +41,7 @@ namespace Utils {
 SettingsSelector::SettingsSelector(QWidget *parent) :
     QWidget(parent)
 {
-    QHBoxLayout *layout = new QHBoxLayout(this);
+    auto layout = new QHBoxLayout(this);
     layout->setContentsMargins(0, 0, 0, 0);
     layout->setSpacing(6);
 
@@ -73,12 +73,11 @@ SettingsSelector::SettingsSelector(QWidget *parent) :
     connect(m_renameButton, &QAbstractButton::clicked,
             this, &SettingsSelector::renameButtonClicked);
     connect(m_configurationCombo,
-            static_cast<void (QComboBox::*)(int)>(&QComboBox::currentIndexChanged),
+            QOverload<int>::of(&QComboBox::currentIndexChanged),
             this, &SettingsSelector::currentChanged);
 }
 
-SettingsSelector::~SettingsSelector()
-{ }
+SettingsSelector::~SettingsSelector() = default;
 
 void SettingsSelector::setConfigurationModel(QAbstractItemModel *model)
 {

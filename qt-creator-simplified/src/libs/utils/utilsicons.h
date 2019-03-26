@@ -38,6 +38,7 @@ QTCREATOR_UTILS_EXPORT extern const Icon EDIT_CLEAR_TOOLBAR;
 QTCREATOR_UTILS_EXPORT extern const Icon LOCKED_TOOLBAR;
 QTCREATOR_UTILS_EXPORT extern const Icon LOCKED;
 QTCREATOR_UTILS_EXPORT extern const Icon UNLOCKED_TOOLBAR;
+QTCREATOR_UTILS_EXPORT extern const Icon PINNED;
 QTCREATOR_UTILS_EXPORT extern const Icon NEXT;
 QTCREATOR_UTILS_EXPORT extern const Icon NEXT_TOOLBAR;
 QTCREATOR_UTILS_EXPORT extern const Icon PREV;
@@ -56,6 +57,7 @@ QTCREATOR_UTILS_EXPORT extern const Icon BOOKMARK_TOOLBAR;
 QTCREATOR_UTILS_EXPORT extern const Icon BOOKMARK_TEXTEDITOR;
 QTCREATOR_UTILS_EXPORT extern const Icon SNAPSHOT_TOOLBAR;
 QTCREATOR_UTILS_EXPORT extern const Icon NEWSEARCH_TOOLBAR;
+QTCREATOR_UTILS_EXPORT extern const Icon SETTINGS_TOOLBAR;
 
 QTCREATOR_UTILS_EXPORT extern const Icon NEWFILE;
 QTCREATOR_UTILS_EXPORT extern const Icon OPENFILE;
@@ -65,6 +67,9 @@ QTCREATOR_UTILS_EXPORT extern const Icon SAVEFILE_TOOLBAR;
 
 QTCREATOR_UTILS_EXPORT extern const Icon EXPORTFILE_TOOLBAR;
 QTCREATOR_UTILS_EXPORT extern const Icon MULTIEXPORTFILE_TOOLBAR;
+
+QTCREATOR_UTILS_EXPORT extern const Icon UNKNOWN_FILE;
+QTCREATOR_UTILS_EXPORT extern const Icon DIR;
 
 QTCREATOR_UTILS_EXPORT extern const Icon UNDO;
 QTCREATOR_UTILS_EXPORT extern const Icon UNDO_TOOLBAR;
@@ -106,6 +111,8 @@ QTCREATOR_UTILS_EXPORT extern const Icon CLOSE_SPLIT_RIGHT;
 QTCREATOR_UTILS_EXPORT extern const Icon FILTER;
 QTCREATOR_UTILS_EXPORT extern const Icon LINK;
 QTCREATOR_UTILS_EXPORT extern const Icon LINK_TOOLBAR;
+QTCREATOR_UTILS_EXPORT extern const Icon SORT_ALPHABETICALLY_TOOLBAR;
+QTCREATOR_UTILS_EXPORT extern const Icon TOGGLE_PROGRESSDETAILS_TOOLBAR;
 
 QTCREATOR_UTILS_EXPORT extern const Icon INFO;
 QTCREATOR_UTILS_EXPORT extern const Icon INFO_TOOLBAR;
@@ -144,5 +151,41 @@ QTCREATOR_UTILS_EXPORT extern const Icon CODEMODEL_DISABLED_ERROR;
 QTCREATOR_UTILS_EXPORT extern const Icon CODEMODEL_DISABLED_WARNING;
 QTCREATOR_UTILS_EXPORT extern const Icon CODEMODEL_FIXIT;
 
+QTCREATOR_UTILS_EXPORT extern const Icon MACOS_TOUCHBAR_BOOKMARK;
+QTCREATOR_UTILS_EXPORT extern const Icon MACOS_TOUCHBAR_CLEAR;
 } // namespace Icons
+
+namespace CodeModelIcon {
+
+enum Type {
+    Class = 0,
+    Struct,
+    Enum,
+    Enumerator,
+    FuncPublic,
+    FuncProtected,
+    FuncPrivate,
+    FuncPublicStatic,
+    FuncProtectedStatic,
+    FuncPrivateStatic,
+    Namespace,
+    VarPublic,
+    VarProtected,
+    VarPrivate,
+    VarPublicStatic,
+    VarProtectedStatic,
+    VarPrivateStatic,
+    Signal,
+    SlotPublic,
+    SlotProtected,
+    SlotPrivate,
+    Keyword,
+    Macro,
+    Property,
+    Unknown
+};
+
+QTCREATOR_UTILS_EXPORT QIcon iconForType(Type type);
+
+} // namespace CodeModel
 } // namespace Utils

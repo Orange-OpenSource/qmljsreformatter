@@ -51,6 +51,8 @@ public:
     using const_reverse_iterator = std::reverse_iterator<const_iterator>;
     using size_type = std::size_t;
 
+    constexpr SmallStringView() = default;
+
     template<size_type Size>
     constexpr
     SmallStringView(const char(&string)[Size]) noexcept
@@ -88,8 +90,7 @@ public:
     SmallStringView(const String &string) noexcept
         : m_pointer(string.data()),
           m_size(string.size())
-    {
-    }
+    {}
 
     static
     SmallStringView fromUtf8(const char *const characterPointer)
@@ -178,9 +179,13 @@ public:
         return m_pointer[0] == characterToSearch;
     }
 
+    char back() const { return m_pointer[m_size - 1]; }
+
+    char operator[](std::size_t index) { return m_pointer[index]; }
+
 private:
-    const char *m_pointer;
-    size_type m_size;
+    const char *m_pointer = "";
+    size_type m_size = 0;
 };
 
 inline

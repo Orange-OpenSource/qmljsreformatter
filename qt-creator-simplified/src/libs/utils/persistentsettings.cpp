@@ -281,7 +281,7 @@ QString ParseContext::formatWarning(const QXmlStreamReader &r, const QString &me
 {
     QString result = QLatin1String("Warning reading ");
     if (const QIODevice *device = r.device())
-        if (const QFile *file = qobject_cast<const QFile *>(device))
+        if (const auto file = qobject_cast<const QFile *>(device))
             result += QDir::toNativeSeparators(file->fileName()) + QLatin1Char(':');
     result += QString::number(r.lineNumber());
     result += QLatin1String(": ");
@@ -321,15 +321,13 @@ QVariant ParseContext::readSimpleValue(QXmlStreamReader &r, const QXmlStreamAttr
     }
     QVariant value;
     value.setValue(text);
-    value.convert(QMetaType::type(type.toLatin1().data()));
+    value.convert(QMetaType::type(type.toLatin1().constData()));
     return value;
 }
 
 // =================================== PersistentSettingsReader
 
-PersistentSettingsReader::PersistentSettingsReader()
-{
-}
+PersistentSettingsReader::PersistentSettingsReader() = default;
 
 QVariant PersistentSettingsReader::restoreValue(const QString &variable, const QVariant &defaultValue) const
 {
@@ -343,7 +341,7 @@ QVariantMap PersistentSettingsReader::restoreValues() const
     return m_valueMap;
 }
 
-bool PersistentSettingsReader::load(const FileName &fileName)
+bool PersistentSettingsReader::load(const FilePath &fileName)
 {
     m_valueMap.clear();
 
@@ -411,13 +409,13 @@ static void writeVariantValue(QXmlStreamWriter &w, const Context &ctx,
     }
 }
 
-PersistentSettingsWriter::PersistentSettingsWriter(const FileName &fileName, const QString &docType) :
+PersistentSettingsWriter::PersistentSettingsWriter(const FilePath &fileName, const QString &docType) :
     m_fileName(fileName), m_docType(docType)
 { }
 
 PersistentSettingsWriter::~PersistentSettingsWriter()
 {
-    write(m_savedData, 0);
+    write(m_savedData, nullptr);
 }
 
 bool PersistentSettingsWriter::save(const QVariantMap &data, QString *errorString) const
@@ -440,7 +438,7 @@ bool PersistentSettingsWriter::save(const QVariantMap &data, QWidget *parent) co
 }
 #endif // QT_GUI_LIB
 
-FileName PersistentSettingsWriter::fileName() const
+FilePath PersistentSettingsWriter::fileName() const
 { return m_fileName; }
 
 //** * @brief Set contents of file (e.g. from data read from it). */

@@ -51,34 +51,24 @@ struct NewClassWidgetPrivate {
     QString m_headerExtension;
     QString m_sourceExtension;
     QString m_formExtension;
-    bool m_valid;
-    bool m_classEdited;
+    bool m_valid = false;
+    bool m_classEdited = false;
     // Store the "visible" values to prevent the READ accessors from being
     // fooled by a temporarily hidden widget
-    bool m_baseClassInputVisible;
-    bool m_formInputVisible;
-    bool m_headerInputVisible;
-    bool m_sourceInputVisible;
-    bool m_pathInputVisible;
-    bool m_qobjectCheckBoxVisible;
-    bool m_formInputCheckable;
+    bool m_baseClassInputVisible = true;
+    bool m_formInputVisible = true;
+    bool m_headerInputVisible = true;
+    bool m_sourceInputVisible = true;
+    bool m_pathInputVisible = true;
+    bool m_qobjectCheckBoxVisible = false;
+    bool m_formInputCheckable = false;
     QRegExp m_classNameValidator;
 };
 
 NewClassWidgetPrivate:: NewClassWidgetPrivate() :
     m_headerExtension(QLatin1Char('h')),
     m_sourceExtension(QLatin1String("cpp")),
-    m_formExtension(QLatin1String("ui")),
-    m_valid(false),
-    m_classEdited(false),
-    m_baseClassInputVisible(true),
-    m_formInputVisible(true),
-    m_headerInputVisible(true),
-    m_sourceInputVisible(true),
-    m_pathInputVisible(true),
-    m_qobjectCheckBoxVisible(false),
-    m_formInputCheckable(false)
-
+    m_formExtension(QLatin1String("ui"))
 {
 }
 
@@ -98,7 +88,7 @@ NewClassWidget::NewClassWidget(QWidget *parent) :
     connect(d->m_ui.classLineEdit, &QLineEdit::textEdited,
             this, &NewClassWidget::classNameEdited);
     connect(d->m_ui.baseClassComboBox,
-            static_cast<void (QComboBox::*)(int)>(&QComboBox::currentIndexChanged),
+            QOverload<int>::of(&QComboBox::currentIndexChanged),
             this, &NewClassWidget::suggestClassNameFromBase);
     connect(d->m_ui.baseClassComboBox, &QComboBox::editTextChanged,
             this, &NewClassWidget::slotValidChanged);

@@ -1,6 +1,6 @@
 /****************************************************************************
 **
-** Copyright (C) 2016 The Qt Company Ltd.
+** Copyright (C) 2019 The Qt Company Ltd.
 ** Contact: https://www.qt.io/licensing/
 **
 ** This file is part of Qt Creator.
@@ -25,33 +25,27 @@
 
 #pragma once
 
-#include "utils_global.h"
+#include <QtGlobal>
 
-#include <QStyledItemDelegate>
+QT_BEGIN_NAMESPACE
+template<typename Type>
+class QList;
+class QTreeView;
+QT_END_NAMESPACE
 
 namespace Utils {
+class NameValueDictionary;
+class NameValueItem;
+using NameValueItems = QVector<NameValueItem>;
 
-class QTCREATOR_UTILS_EXPORT AnnotatedItemDelegate : public QStyledItemDelegate
-{
-public:
-    AnnotatedItemDelegate(QObject *parent = nullptr);
-    ~AnnotatedItemDelegate() override;
+class Environment;
+using EnvironmentItem = NameValueItem;
+using EnvironmentItems = NameValueItems;
 
-    void setAnnotationRole(int role);
-    int annotationRole() const;
+class PreprocessorMacroDictionary;
+using PreprocessorMacroItem = NameValueItem;
+using PreprocessorMacroItems = NameValueItems;
 
-    void setDelimiter(const QString &delimiter);
-    const QString &delimiter() const;
-
-protected:
-    void paint(QPainter *painter,
-                       const QStyleOptionViewItem &option,
-                       const QModelIndex &index) const override;
-    QSize sizeHint(const QStyleOptionViewItem &option, const QModelIndex &index) const override;
-
-private:
-    int m_annotationRole;
-    QString m_delimiter;
-};
-
-} // Utils
+class NameValueModel;
+class EnvironmentModel;
+} // namespace Utils

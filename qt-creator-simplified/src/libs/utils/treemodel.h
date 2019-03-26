@@ -99,8 +99,8 @@ private:
     void removeItemAt(int pos);
     void propagateModel(BaseTreeModel *m);
 
-    TreeItem *m_parent; // Not owned.
-    BaseTreeModel *m_model; // Not owned.
+    TreeItem *m_parent = nullptr; // Not owned.
+    BaseTreeModel *m_model = nullptr; // Not owned.
     QVector<TreeItem *> m_children; // Owned.
     friend class BaseTreeModel;
 };
@@ -147,6 +147,11 @@ public:
             return cmp(static_cast<const ChildType *>(lhs), static_cast<const ChildType *>(rhs));
         };
         TreeItem::insertOrderedChild(item, cmp0);
+    }
+
+    ChildType *reverseFindAnyChild(const std::function<bool(TreeItem *)> &pred) const
+    {
+        return static_cast<ChildType *>(TreeItem::reverseFindAnyChild(pred));
     }
 };
 

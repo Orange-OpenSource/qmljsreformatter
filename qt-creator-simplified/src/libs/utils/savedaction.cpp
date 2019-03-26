@@ -56,7 +56,6 @@ namespace Utils {
 SavedAction::SavedAction(QObject *parent)
   : QAction(parent)
 {
-    m_widget = 0;
     connect(this, &QAction::triggered, this, &SavedAction::actionTriggered);
 }
 
@@ -236,7 +235,7 @@ void SavedAction::connectWidget(QWidget *widget, ApplyMode applyMode)
     } else if (auto spinBox = qobject_cast<QSpinBox *>(widget)) {
         spinBox->setValue(m_value.toInt());
         if (applyMode == ImmediateApply) {
-            connect(spinBox, static_cast<void(QSpinBox::*)(int)>(&QSpinBox::valueChanged),
+            connect(spinBox, QOverload<int>::of(&QSpinBox::valueChanged),
                     this, [this, spinBox]() { setValue(spinBox->value()); });
         }
     } else if (auto lineEdit = qobject_cast<QLineEdit *>(widget)) {
@@ -285,7 +284,7 @@ void SavedAction::connectWidget(QWidget *widget, ApplyMode applyMode)
 */
 void SavedAction::disconnectWidget()
 {
-    m_widget = 0;
+    m_widget = nullptr;
 }
 
 void SavedAction::apply(QSettings *s)
@@ -335,7 +334,7 @@ void SavedAction::actionTriggered(bool)
     if (actionGroup() && actionGroup()->isExclusive()) {
         // FIXME: should be taken care of more directly
         foreach (QAction *act, actionGroup()->actions())
-            if (SavedAction *dact = qobject_cast<SavedAction *>(act))
+            if (auto dact = qobject_cast<SavedAction *>(act))
                 dact->setValue(bool(act == this));
     }
 }

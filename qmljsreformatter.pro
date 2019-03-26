@@ -11,17 +11,19 @@ QT_CREATOR_SIMPLIFIED_SRC = "qt-creator-simplified"
 INCLUDEPATH += $$QT_CREATOR_SIMPLIFIED_SRC/src/libs
 INCLUDEPATH += $$QT_CREATOR_SIMPLIFIED_SRC/src/libs/3rdparty
 
-HEADERS += src/qmljsreformatter.h \ # src/qmljsreformatter.h overrides the original header
+HEADERS += \
     $$QT_CREATOR_SIMPLIFIED_SRC/src/libs/cplusplus/cppmodelmanagerbase.h \
     $$QT_CREATOR_SIMPLIFIED_SRC/src/libs/utils/filesystemwatcher.h \
     $$QT_CREATOR_SIMPLIFIED_SRC/src/libs/utils/savefile.h \
     $$QT_CREATOR_SIMPLIFIED_SRC/src/libs/utils/optional.h \
     $$QT_CREATOR_SIMPLIFIED_SRC/src/libs/qmljs/qmljscodeformatter.h \
+    $$QT_CREATOR_SIMPLIFIED_SRC/src/libs/qmljs/qmljsinterpreter.h \
     $$QT_CREATOR_SIMPLIFIED_SRC/src/libs/qmljs/qmljsmodelmanagerinterface.h \
     $$QT_CREATOR_SIMPLIFIED_SRC/src/libs/qmljs/qmljsplugindumper.h \
-    $$QT_CREATOR_SIMPLIFIED_SRC/src/libs/qmljs/qmljsinterpreter.h
+    $$QT_CREATOR_SIMPLIFIED_SRC/src/libs/qmljs/qmljsreformatter.h
 
-SOURCES += $$QT_CREATOR_SIMPLIFIED_SRC/src/libs/3rdparty/cplusplus/AST.cpp \
+SOURCES += \
+    $$QT_CREATOR_SIMPLIFIED_SRC/src/libs/3rdparty/cplusplus/AST.cpp \
     $$QT_CREATOR_SIMPLIFIED_SRC/src/libs/3rdparty/cplusplus/ASTClone.cpp \ 
     $$QT_CREATOR_SIMPLIFIED_SRC/src/libs/3rdparty/cplusplus/ASTMatch0.cpp \ 
     $$QT_CREATOR_SIMPLIFIED_SRC/src/libs/3rdparty/cplusplus/ASTMatcher.cpp \
@@ -54,7 +56,8 @@ SOURCES += $$QT_CREATOR_SIMPLIFIED_SRC/src/libs/3rdparty/cplusplus/AST.cpp \
     $$QT_CREATOR_SIMPLIFIED_SRC/src/libs/3rdparty/cplusplus/Type.cpp \
     $$QT_CREATOR_SIMPLIFIED_SRC/src/libs/3rdparty/cplusplus/TypeVisitor.cpp \ 
 
-SOURCES += $$QT_CREATOR_SIMPLIFIED_SRC/src/libs/cplusplus/CppDocument.cpp \
+SOURCES += \
+    $$QT_CREATOR_SIMPLIFIED_SRC/src/libs/cplusplus/CppDocument.cpp \
     $$QT_CREATOR_SIMPLIFIED_SRC/src/libs/cplusplus/cppmodelmanagerbase.cpp \
     $$QT_CREATOR_SIMPLIFIED_SRC/src/libs/cplusplus/CppRewriter.cpp \  
     $$QT_CREATOR_SIMPLIFIED_SRC/src/libs/cplusplus/DependencyTable.cpp \
@@ -73,7 +76,8 @@ SOURCES += $$QT_CREATOR_SIMPLIFIED_SRC/src/libs/cplusplus/CppDocument.cpp \
     $$QT_CREATOR_SIMPLIFIED_SRC/src/libs/cplusplus/TypeOfExpression.cpp \ 
     $$QT_CREATOR_SIMPLIFIED_SRC/src/libs/cplusplus/TypePrettyPrinter.cpp \ 
 
-SOURCES += $$QT_CREATOR_SIMPLIFIED_SRC/src/libs/utils/environment.cpp \ 
+SOURCES += \
+    $$QT_CREATOR_SIMPLIFIED_SRC/src/libs/utils/environment.cpp \ 
     $$QT_CREATOR_SIMPLIFIED_SRC/src/libs/utils/fileutils.cpp \
     $$QT_CREATOR_SIMPLIFIED_SRC/src/libs/utils/filesystemwatcher.cpp \ 
     $$QT_CREATOR_SIMPLIFIED_SRC/src/libs/utils/hostosinfo.cpp \
@@ -82,10 +86,12 @@ SOURCES += $$QT_CREATOR_SIMPLIFIED_SRC/src/libs/utils/environment.cpp \
     $$QT_CREATOR_SIMPLIFIED_SRC/src/libs/utils/runextensions.cpp \
     $$QT_CREATOR_SIMPLIFIED_SRC/src/libs/utils/savefile.cpp
 
-SOURCES += $$QT_CREATOR_SIMPLIFIED_SRC/src/libs/languageutils/componentversion.cpp \
+SOURCES += \
+    $$QT_CREATOR_SIMPLIFIED_SRC/src/libs/languageutils/componentversion.cpp \
     $$QT_CREATOR_SIMPLIFIED_SRC/src/libs/languageutils/fakemetaobject.cpp
 
-SOURCES += $$QT_CREATOR_SIMPLIFIED_SRC/src/libs/qmljs/parser/qmlerror.cpp \
+SOURCES += \
+    $$QT_CREATOR_SIMPLIFIED_SRC/src/libs/qmljs/parser/qmlerror.cpp \
     $$QT_CREATOR_SIMPLIFIED_SRC/src/libs/qmljs/parser/qmljsast.cpp \
     $$QT_CREATOR_SIMPLIFIED_SRC/src/libs/qmljs/parser/qmljsastvisitor.cpp \
     $$QT_CREATOR_SIMPLIFIED_SRC/src/libs/qmljs/parser/qmldirparser.cpp \
@@ -107,9 +113,7 @@ SOURCES += $$QT_CREATOR_SIMPLIFIED_SRC/src/libs/qmljs/parser/qmlerror.cpp \
     $$QT_CREATOR_SIMPLIFIED_SRC/src/libs/qmljs/qmljsmodelmanagerinterface.cpp \
     $$QT_CREATOR_SIMPLIFIED_SRC/src/libs/qmljs/qmljsplugindumper.cpp \
     $$QT_CREATOR_SIMPLIFIED_SRC/src/libs/qmljs/qmljsqrcparser.cpp \
-#   src/qmljsreformatter.cpp overrides this original file
-#   $$QT_CREATOR_SIMPLIFIED_SRC/src/libs/qmljs/qmljsreformatter.cpp \
-    src/qmljsreformatter.cpp \
+    $$QT_CREATOR_SIMPLIFIED_SRC/src/libs/qmljs/qmljsreformatter.cpp \
     $$QT_CREATOR_SIMPLIFIED_SRC/src/libs/qmljs/qmljsscanner.cpp \
     $$QT_CREATOR_SIMPLIFIED_SRC/src/libs/qmljs/qmljsscopeastpath.cpp \
     $$QT_CREATOR_SIMPLIFIED_SRC/src/libs/qmljs/qmljsscopebuilder.cpp \
@@ -121,7 +125,16 @@ SOURCES += $$QT_CREATOR_SIMPLIFIED_SRC/src/libs/qmljs/parser/qmlerror.cpp \
 
 SOURCES += src/main.cpp
 
+ORANGE {
+    DEFINES += ORANGE
+    
+    # Override the code source from Qt Creator
+    SOURCES -= $$QT_CREATOR_SIMPLIFIED_SRC/src/libs/qmljs/qmljsreformatter.cpp
+    HEADERS -= $$QT_CREATOR_SIMPLIFIED_SRC/src/libs/qmljs/qmljsreformatter.h
+    SOURCES += src/qmljsreformatter.cpp
+    HEADERS += src/qmljsreformatter.h
+}
+
 TARGET = qmljsreformatter
 
 OTHER_FILES += tests/*.test.qml tests/*.reference.qml tests/*.sh
-

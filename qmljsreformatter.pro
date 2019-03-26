@@ -4,6 +4,10 @@ QT += widgets xml
 
 CONFIG += c++14
 
+macx {
+   CONFIG -= app_bundle
+}
+
 DEFINES += QT_CREATOR
 
 QT_CREATOR_SIMPLIFIED_SRC = "qt-creator-simplified"

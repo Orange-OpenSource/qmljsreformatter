@@ -22,7 +22,11 @@
 #include <QDebug>
 #include <QFile>
 
-#include "src/qmljsreformatter.h"
+#ifdef ORANGE
+#include "qmljsreformatter.h"
+#else
+#include "qmljs/qmljsreformatter.h"
+#endif
 
 int main(int argc, char *argv[])
 {
@@ -36,15 +40,21 @@ int main(int argc, char *argv[])
     parser.addVersionOption();
     parser.addPositionalArgument("source", "Source file.");
     parser.addPositionalArgument("destination", "Destination file.");
+#ifdef ORANGE
     // A boolean option with multiple names (-s, --split)
     QCommandLineOption splitOption(QStringList() << "s" << "split", "Split the long lines.");
     parser.addOption(splitOption);
+#endif
     parser.process(app);
 
     const QStringList args = parser.positionalArguments();
 
     if (args.length() < 2) {
+#ifdef ORANGE
+        qWarning() << "Usage:" << argv[0] << "[-s|--split] <input-file> <output-file>";
+#else
         qWarning() << "Usage:" << argv[0] << "<input-file> <output-file>";
+#endif
         return 1;
     }
 
@@ -78,7 +88,12 @@ int main(int argc, char *argv[])
         return 3;
     }
 
+#ifdef ORANGE
     QString formattedContent = QmlJS::reformat(doc, parser.isSet(splitOption));
+#else
+    QString formattedContent = QmlJS::reformat(doc);
+#endif
+
     QFile outFile(outputFile);
 
     if (outFile.open(QIODevice::WriteOnly)) {

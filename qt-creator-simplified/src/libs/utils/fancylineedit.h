@@ -82,6 +82,8 @@ public:
     explicit FancyLineEdit(QWidget *parent = nullptr);
     ~FancyLineEdit() override;
 
+    void setTextKeepingActiveCursor(const QString &text);
+
     QIcon buttonIcon(Side side) const;
     void setButtonIcon(Side side, const QIcon &icon);
 
@@ -121,7 +123,7 @@ public:
     //  Validation
 
     // line edit, (out)errorMessage -> valid?
-    typedef std::function<bool(FancyLineEdit *, QString *)> ValidationFunction;
+    using ValidationFunction = std::function<bool(FancyLineEdit *, QString *)>;
     enum State { Invalid, DisplayingPlaceholderText, Valid };
 
     State state() const;

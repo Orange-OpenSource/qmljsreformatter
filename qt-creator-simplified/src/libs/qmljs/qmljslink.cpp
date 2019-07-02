@@ -30,8 +30,9 @@
 #include "qmljsbind.h"
 #include "qmljsutils.h"
 #include "qmljsmodelmanagerinterface.h"
-#include "qmljsqrcparser.h"
 #include "qmljsconstants.h"
+
+#include <utils/qrcparser.h>
 
 #include <QDir>
 
@@ -393,13 +394,8 @@ Import LinkPrivate::importNonFile(Document::Ptr doc, const ImportInfo &importInf
     }
 
     // TODO: at the moment there is not any types information on Qbs imports.
-    // Just check that tha the import is listed in the Qbs bundle.
-    if (doc->language() == Dialect::QmlQbs) {
-        QmlBundle qbs = ModelManagerInterface::instance()
-                ->activeBundles().bundleForLanguage(Dialect::QmlQbs);
-        if (qbs.supportedImports().contains(importInfo.name()))
-            importFound = true;
-    }
+    if (doc->language() == Dialect::QmlQbs)
+        importFound = true;
 
     if (!importFound && importInfo.ast()) {
         import.valid = false;
@@ -562,7 +558,7 @@ void LinkPrivate::loadImplicitDirectoryImports(Imports *imports, Document::Ptr d
     foreach (const QString &path,
              ModelManagerInterface::instance()->qrcPathsForFile(doc->fileName())) {
         processImport(ImportInfo::qrcDirectoryImport(
-                          QrcParser::qrcDirectoryPathForQrcFilePath(path)));
+                          Utils::QrcParser::qrcDirectoryPathForQrcFilePath(path)));
     }
 }
 

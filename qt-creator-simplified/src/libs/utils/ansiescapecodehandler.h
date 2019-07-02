@@ -33,8 +33,8 @@ namespace Utils {
 
 class QTCREATOR_UTILS_EXPORT FormattedText {
 public:
-    FormattedText() { }
-    FormattedText(const FormattedText &other) : text(other.text), format(other.format) { }
+    FormattedText() = default;
+    FormattedText(const FormattedText &other) = default;
     FormattedText(const QString &txt, const QTextCharFormat &fmt = QTextCharFormat()) :
         text(txt), format(fmt)
     { }
@@ -46,14 +46,13 @@ public:
 class QTCREATOR_UTILS_EXPORT AnsiEscapeCodeHandler
 {
 public:
-    AnsiEscapeCodeHandler();
     QList<FormattedText> parseText(const FormattedText &input);
     void endFormatScope();
 
 private:
     void setFormatScope(const QTextCharFormat &charFormat);
 
-    bool            m_previousFormatClosed;
+    bool            m_previousFormatClosed = true;
     QTextCharFormat m_previousFormat;
     QString         m_pendingText;
 };

@@ -80,6 +80,7 @@ public:
         EditorPlaceholderColor,
         FancyToolBarSeparatorColor,
         FancyTabBarBackgroundColor,
+        FancyTabBarSelectedBackgroundColor,
         FancyTabWidgetDisabledSelectedTextColor,
         FancyTabWidgetDisabledUnselectedTextColor,
         FancyTabWidgetEnabledSelectedTextColor,
@@ -337,7 +338,8 @@ public:
         FlatProjectsMode,
         FlatMenuBar,
         ToolBarIconShadow,
-        WindowColorAsBase
+        WindowColorAsBase,
+        DarkUserInterface
     };
 
     Q_INVOKABLE bool flag(Flag f) const;

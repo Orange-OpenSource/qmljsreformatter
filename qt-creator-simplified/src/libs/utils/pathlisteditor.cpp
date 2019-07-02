@@ -68,9 +68,9 @@ const int PathListEditor::lastInsertButtonIndex = 0;
 
 class PathListPlainTextEdit : public QPlainTextEdit {
 public:
-    explicit PathListPlainTextEdit(QWidget *parent = 0);
+    explicit PathListPlainTextEdit(QWidget *parent = nullptr);
 protected:
-    virtual void insertFromMimeData (const QMimeData *source);
+    void insertFromMimeData (const QMimeData *source) override;
 };
 
 PathListPlainTextEdit::PathListPlainTextEdit(QWidget *parent) :
@@ -149,7 +149,7 @@ QPushButton *PathListEditor::addButton(const QString &text, QObject *parent,
 QPushButton *PathListEditor::insertButton(int index /* -1 */, const QString &text, QObject *parent,
                                           std::function<void()> slotFunc)
 {
-    QPushButton *rc = new QPushButton(text, this);
+    auto rc = new QPushButton(text, this);
     QObject::connect(rc, &QPushButton::pressed, parent, slotFunc);
     d->buttonLayout->insertWidget(index, rc);
     return rc;

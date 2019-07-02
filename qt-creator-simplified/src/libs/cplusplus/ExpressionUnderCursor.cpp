@@ -262,9 +262,9 @@ int ExpressionUnderCursor::startOfFunctionCall(const QTextCursor &cursor) const
 
         if (tk.is(T_EOF_SYMBOL)) {
             break;
-        } else if (tk.is(T_LPAREN)) {
+        } else if (tk.is(T_LPAREN) || tk.is(T_LBRACE)) {
             return scanner.startPosition() + tk.utf16charsBegin();
-        } else if (tk.is(T_RPAREN)) {
+        } else if (tk.is(T_RPAREN) || tk.is(T_RBRACE)) {
             int matchingBrace = scanner.startOfMatchingBrace(index);
 
             if (matchingBrace == index) // If no matching brace found

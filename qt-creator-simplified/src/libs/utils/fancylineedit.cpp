@@ -27,6 +27,7 @@
 #include "fancylineedit.h"
 #include "historycompleter.h"
 #include "hostosinfo.h"
+#include "optional.h"
 #include "qtcassert.h"
 #include "stylehelper.h"
 #include "utilsicons.h"
@@ -85,11 +86,11 @@ class FancyLineEditPrivate : public QObject
 public:
     explicit FancyLineEditPrivate(FancyLineEdit *parent);
 
-    virtual bool eventFilter(QObject *obj, QEvent *event);
+    bool eventFilter(QObject *obj, QEvent *event) override;
 
     FancyLineEdit *m_lineEdit;
     IconButton *m_iconbutton[2];
-    HistoryCompleter *m_historyCompleter = 0;
+    HistoryCompleter *m_historyCompleter = nullptr;
     FancyLineEdit::ValidationFunction m_validationFunction = &FancyLineEdit::validateWithValidator;
     QString m_oldText;
     QMenu *m_menu[2];
@@ -119,7 +120,7 @@ FancyLineEditPrivate::FancyLineEditPrivate(FancyLineEdit *parent) :
         m_iconbutton[i]->hide();
         m_iconbutton[i]->setAutoHide(false);
 
-        m_menu[i] = 0;
+        m_menu[i] = nullptr;
 
         m_menuTabFocusTrigger[i] = false;
         m_iconEnabled[i] = false;
@@ -175,6 +176,14 @@ FancyLineEdit::~FancyLineEdit()
     }
 }
 
+void FancyLineEdit::setTextKeepingActiveCursor(const QString &text)
+{
+    optional<int> cursor = hasFocus() ? make_optional(cursorPosition()) : nullopt;
+    setText(text);
+    if (cursor)
+        setCursorPosition(*cursor);
+}
+
 void FancyLineEdit::setButtonVisible(Side side, bool visible)
 {
     d->m_iconbutton[side]->setVisible(visible);
@@ -194,7 +203,7 @@ QAbstractButton *FancyLineEdit::button(FancyLineEdit::Side side) const
 
 void FancyLineEdit::iconClicked()
 {
-    IconButton *button = qobject_cast<IconButton *>(sender());
+    auto button = qobject_cast<IconButton *>(sender());
     int index = -1;
     for (int i = 0; i < 2; ++i)
         if (d->m_iconbutton[i] == button)
@@ -236,7 +245,7 @@ void FancyLineEdit::updateButtonPositions()
 {
     QRect contentRect = rect();
     for (int i = 0; i < 2; ++i) {
-        Side iconpos = (Side)i;
+        Side iconpos = Side(i);
         if (layoutDirection() == Qt::RightToLeft)
             iconpos = (iconpos == Left ? Right : Left);
 
@@ -302,7 +311,7 @@ void FancyLineEdit::setHistoryCompleter(const QString &historyKey, bool restoreL
 {
     QTC_ASSERT(!d->m_historyCompleter, return);
     d->m_historyCompleter = new HistoryCompleter(historyKey, this);
-    if (restoreLastItemFromHistory)
+    if (restoreLastItemFromHistory && d->m_historyCompleter->hasHistory())
         setText(d->m_historyCompleter->historyItem());
     QLineEdit::setCompleter(d->m_historyCompleter);
 
@@ -473,9 +482,9 @@ void FancyLineEdit::validate()
 
     // Check buttons.
     if (d->m_oldText.isEmpty() || t.isEmpty()) {
-        for (int i = 0; i < 2; ++i) {
-            if (d->m_iconbutton[i]->hasAutoHide())
-                d->m_iconbutton[i]->animateShow(!t.isEmpty());
+        for (auto &button : qAsConst(d->m_iconbutton)) {
+            if (button->hasAutoHide())
+                button->animateShow(!t.isEmpty());
         }
         d->m_oldText = t;
     }

@@ -114,7 +114,8 @@ int HighlightingItemDelegate::drawLineNumber(QPainter *painter, const QStyleOpti
     const bool isSelected = option.state & QStyle::State_Selected;
     const QString lineText = QString::number(lineNumber);
     const int minimumLineNumberDigits = qMax(kMinimumLineNumberDigits, lineText.count());
-    const int fontWidth = painter->fontMetrics().width(QString(minimumLineNumberDigits, '0'));
+    const int fontWidth =
+        painter->fontMetrics().horizontalAdvance(QString(minimumLineNumberDigits, '0'));
     const int lineNumberAreaWidth = lineNumberAreaHorizontalPadding + fontWidth
                                     + lineNumberAreaHorizontalPadding;
     QRect lineNumberAreaRect(rect);
@@ -135,7 +136,7 @@ int HighlightingItemDelegate::drawLineNumber(QPainter *painter, const QStyleOpti
     opt.palette.setColor(cg, QPalette::Text, Qt::darkGray);
 
     const QStyle *style = QApplication::style();
-    const int textMargin = style->pixelMetric(QStyle::PM_FocusFrameHMargin, 0, 0) + 1;
+    const int textMargin = style->pixelMetric(QStyle::PM_FocusFrameHMargin, nullptr, nullptr) + 1;
 
     const QRect rowRect
             = lineNumberAreaRect.adjusted(-textMargin, 0,
@@ -263,7 +264,7 @@ void HighlightingItemDelegate::drawDisplay(QPainter *painter,
 
     const QWidget *widget = option.widget;
     QStyle *style = widget ? widget->style() : QApplication::style();
-    const int textMargin = style->pixelMetric(QStyle::PM_FocusFrameHMargin, 0, widget) + 1;
+    const int textMargin = style->pixelMetric(QStyle::PM_FocusFrameHMargin, nullptr, widget) + 1;
     QRect textRect = rect.adjusted(textMargin, 0, -textMargin, 0); // remove width padding
     const bool wrapText = opt.features & QStyleOptionViewItem::WrapText;
     QTextOption textOption;

@@ -58,19 +58,11 @@ public:
 
 void QtColorButtonPrivate::slotEditColor()
 {
-    QColor newColor;
-    if (m_alphaAllowed) {
-        bool ok;
-        const QRgb rgba = QColorDialog::getRgba(m_color.rgba(), &ok, q_ptr);
-        if (!ok)
-            return;
-        newColor = QColor::fromRgba(rgba);
-    } else {
-        newColor = QColorDialog::getColor(m_color, q_ptr);
-        if (!newColor.isValid())
-            return;
-    }
-    if (newColor == q_ptr->color())
+    QColorDialog::ColorDialogOptions options;
+    if (m_alphaAllowed)
+        options |= QColorDialog::ShowAlphaChannel;
+    const QColor newColor = QColorDialog::getColor(m_color, q_ptr, QString(), options);
+    if (!newColor.isValid() || newColor == q_ptr->color())
         return;
     q_ptr->setColor(newColor);
     emit q_ptr->colorChanged(m_color);
@@ -236,14 +228,14 @@ void QtColorButton::mouseMoveEvent(QMouseEvent *event)
 #ifndef QT_NO_DRAGANDDROP
     if (event->buttons() & Qt::LeftButton &&
             (d_ptr->m_dragStart - event->pos()).manhattanLength() > QApplication::startDragDistance()) {
-        QMimeData *mime = new QMimeData;
+        auto mime = new QMimeData;
         mime->setColorData(color());
-        QDrag *drg = new QDrag(this);
+        auto drg = new QDrag(this);
         drg->setMimeData(mime);
         drg->setPixmap(d_ptr->generatePixmap());
         setDown(false);
         event->accept();
-        drg->start();
+        drg->exec(Qt::CopyAction);
         return;
     }
 #endif

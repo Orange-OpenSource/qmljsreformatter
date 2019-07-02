@@ -18,6 +18,7 @@ INCLUDEPATH += $$QT_CREATOR_SIMPLIFIED_SRC/src/libs/3rdparty
 HEADERS += \
     $$QT_CREATOR_SIMPLIFIED_SRC/src/libs/cplusplus/cppmodelmanagerbase.h \
     $$QT_CREATOR_SIMPLIFIED_SRC/src/libs/utils/filesystemwatcher.h \
+    $$QT_CREATOR_SIMPLIFIED_SRC/src/libs/utils/globalfilechangeblocker.h \
     $$QT_CREATOR_SIMPLIFIED_SRC/src/libs/utils/savefile.h \
     $$QT_CREATOR_SIMPLIFIED_SRC/src/libs/utils/optional.h \
     $$QT_CREATOR_SIMPLIFIED_SRC/src/libs/qmljs/qmljscodeformatter.h \
@@ -83,9 +84,11 @@ SOURCES += \
 SOURCES += \
     $$QT_CREATOR_SIMPLIFIED_SRC/src/libs/utils/environment.cpp \ 
     $$QT_CREATOR_SIMPLIFIED_SRC/src/libs/utils/fileutils.cpp \
-    $$QT_CREATOR_SIMPLIFIED_SRC/src/libs/utils/filesystemwatcher.cpp \ 
+    $$QT_CREATOR_SIMPLIFIED_SRC/src/libs/utils/filesystemwatcher.cpp \
+    $$QT_CREATOR_SIMPLIFIED_SRC/src/libs/utils/globalfilechangeblocker.cpp \
     $$QT_CREATOR_SIMPLIFIED_SRC/src/libs/utils/hostosinfo.cpp \
     $$QT_CREATOR_SIMPLIFIED_SRC/src/libs/utils/json.cpp \ 
+    $$QT_CREATOR_SIMPLIFIED_SRC/src/libs/utils/qrcparser.cpp \
     $$QT_CREATOR_SIMPLIFIED_SRC/src/libs/utils/qtcassert.cpp \ 
     $$QT_CREATOR_SIMPLIFIED_SRC/src/libs/utils/runextensions.cpp \
     $$QT_CREATOR_SIMPLIFIED_SRC/src/libs/utils/savefile.cpp
@@ -116,7 +119,6 @@ SOURCES += \
     $$QT_CREATOR_SIMPLIFIED_SRC/src/libs/qmljs/qmljsinterpreter.cpp \
     $$QT_CREATOR_SIMPLIFIED_SRC/src/libs/qmljs/qmljsmodelmanagerinterface.cpp \
     $$QT_CREATOR_SIMPLIFIED_SRC/src/libs/qmljs/qmljsplugindumper.cpp \
-    $$QT_CREATOR_SIMPLIFIED_SRC/src/libs/qmljs/qmljsqrcparser.cpp \
     $$QT_CREATOR_SIMPLIFIED_SRC/src/libs/qmljs/qmljsreformatter.cpp \
     $$QT_CREATOR_SIMPLIFIED_SRC/src/libs/qmljs/qmljsscanner.cpp \
     $$QT_CREATOR_SIMPLIFIED_SRC/src/libs/qmljs/qmljsscopeastpath.cpp \

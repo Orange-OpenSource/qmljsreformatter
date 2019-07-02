@@ -34,34 +34,17 @@
 #include <QSet>
 #include <QCoreApplication>
 
-class SystemEnvironment : public Utils::Environment
+Q_GLOBAL_STATIC_WITH_ARGS(Utils::Environment, staticSystemEnvironment,
+                          (QProcessEnvironment::systemEnvironment().toStringList()))
+
+Q_GLOBAL_STATIC(QVector<Utils::EnvironmentProvider>, environmentProviders)
+
+namespace Utils {
+
+static NameValueMap::iterator findKey(NameValueMap &input, Utils::OsType osType, const QString &key)
 {
-public:
-    SystemEnvironment()
-        : Environment(QProcessEnvironment::systemEnvironment().toStringList())
-    {
-        if (Utils::HostOsInfo::isLinuxHost()) {
-            QString ldLibraryPath = value("LD_LIBRARY_PATH");
-            QDir lib(QCoreApplication::applicationDirPath());
-            lib.cd("../lib");
-            QString toReplace = lib.path();
-            lib.cd("qtcreator");
-            toReplace.append(':');
-            toReplace.append(lib.path());
-
-            if (ldLibraryPath.startsWith(toReplace))
-                set("LD_LIBRARY_PATH", ldLibraryPath.remove(0, toReplace.length()));
-        }
-    }
-};
-
-Q_GLOBAL_STATIC(SystemEnvironment, staticSystemEnvironment)
-
-static QMap<QString, QString>::iterator findKey(QMap<QString, QString> &input, Utils::OsType osType,
-                                                const QString &key)
-{
-    const Qt::CaseSensitivity casing
-            = (osType == Utils::OsTypeWindows) ? Qt::CaseInsensitive : Qt::CaseSensitive;
+    const Qt::CaseSensitivity casing = (osType == Utils::OsTypeWindows) ? Qt::CaseInsensitive
+                                                                        : Qt::CaseSensitive;
     for (auto it = input.begin(); it != input.end(); ++it) {
         if (key.compare(it.key(), casing) == 0)
             return it;
@@ -69,207 +52,17 @@ static QMap<QString, QString>::iterator findKey(QMap<QString, QString> &input, U
     return input.end();
 }
 
-static QMap<QString, QString>::const_iterator findKey(const QMap<QString, QString> &input,
-                                                      Utils::OsType osType,
-                                                      const QString &key)
+static NameValueMap::const_iterator findKey(const NameValueMap &input,
+                                            Utils::OsType osType,
+                                            const QString &key)
 {
-    const Qt::CaseSensitivity casing
-            = (osType == Utils::OsTypeWindows) ? Qt::CaseInsensitive : Qt::CaseSensitive;
+    const Qt::CaseSensitivity casing = (osType == Utils::OsTypeWindows) ? Qt::CaseInsensitive
+                                                                        : Qt::CaseSensitive;
     for (auto it = input.constBegin(); it != input.constEnd(); ++it) {
         if (key.compare(it.key(), casing) == 0)
             return it;
     }
     return input.constEnd();
-}
-
-namespace Utils {
-
-enum : char
-{
-#ifdef Q_OS_WIN
-    pathSepC = ';'
-#else
-    pathSepC = ':'
-#endif
-};
-
-void EnvironmentItem::sort(QList<EnvironmentItem> *list)
-{
-    Utils::sort(*list, &EnvironmentItem::name);
-}
-
-QList<EnvironmentItem> EnvironmentItem::fromStringList(const QStringList &list)
-{
-    QList<EnvironmentItem> result;
-    for (const QString &string : list) {
-        int pos = string.indexOf('=', 1);
-        if (pos == -1)
-            result.append(EnvironmentItem(string, QString(), EnvironmentItem::Unset));
-        else
-            result.append(EnvironmentItem(string.left(pos), string.mid(pos + 1)));
-    }
-    return result;
-}
-
-QStringList EnvironmentItem::toStringList(const QList<EnvironmentItem> &list)
-{
-    return Utils::transform(list, [](const EnvironmentItem &item) {
-        if (item.operation == EnvironmentItem::Unset)
-            return QString(item.name);
-        return QString(item.name + '=' + item.value);
-    });
-}
-
-QList<EnvironmentItem> EnvironmentItem::itemsFromVariantList(const QVariantList &list)
-{
-    return Utils::transform(list, [](const QVariant &item) {
-        return itemFromVariantList(item.toList());
-    });
-}
-
-QVariantList EnvironmentItem::toVariantList(const QList<EnvironmentItem> &list)
-{
-    return Utils::transform(list, [](const EnvironmentItem &item) {
-        return QVariant(toVariantList(item));
-    });
-}
-
-EnvironmentItem EnvironmentItem::itemFromVariantList(const QVariantList &list)
-{
-    QTC_ASSERT(list.size() == 3, return EnvironmentItem("", ""));
-    QString name = list.value(0).toString();
-    Operation operation = Operation(list.value(1).toInt());
-    QString value = list.value(2).toString();
-    return EnvironmentItem(name, value, operation);
-}
-
-QVariantList EnvironmentItem::toVariantList(const EnvironmentItem &item)
-{
-    return QVariantList() << item.name << item.operation << item.value;
-}
-
-static QString expand(const Environment *e, QString value)
-{
-    int replaceCount = 0;
-    for (int i = 0; i < value.size(); ++i) {
-        if (value.at(i) == '$') {
-            if ((i + 1) < value.size()) {
-                const QChar &c = value.at(i+1);
-                int end = -1;
-                if (c == '(')
-                    end = value.indexOf(')', i);
-                else if (c == '{')
-                    end = value.indexOf('}', i);
-                if (end != -1) {
-                    const QString &name = value.mid(i + 2, end - i - 2);
-                    Environment::const_iterator it = e->constFind(name);
-                    if (it != e->constEnd())
-                        value.replace(i, end - i + 1, it.value());
-                    ++replaceCount;
-                    QTC_ASSERT(replaceCount < 100, break);
-                }
-            }
-        }
-    }
-    return value;
-}
-
-QDebug operator<<(QDebug debug, const EnvironmentItem &i)
-{
-    QDebugStateSaver saver(debug);
-    debug.noquote();
-    debug.nospace();
-    debug << "EnvironmentItem(";
-    switch (i.operation) {
-    case Utils::EnvironmentItem::Set:
-        debug << "set \"" << i.name << "\" to \"" << i.value << '"';
-        break;
-    case Utils::EnvironmentItem::Unset:
-        debug << "unset \"" << i.name << '"';
-        break;
-    case Utils::EnvironmentItem::Prepend:
-        debug << "prepend to \"" << i.name << "\":\"" << i.value << '"';
-        break;
-    case Utils::EnvironmentItem::Append:
-        debug << "append to \"" << i.name << "\":\"" << i.value << '"';
-        break;
-    }
-    debug << ')';
-    return debug;
-}
-
-void EnvironmentItem::apply(Environment *e, Operation op) const
-{
-    switch (op) {
-    case Set:
-        e->set(name, expand(e, value));
-        break;
-    case Unset:
-        e->unset(name);
-        break;
-    case Prepend: {
-        const Environment::const_iterator it = e->constFind(name);
-        if (it != e->constEnd()) {
-            QString v = it.value();
-            const QChar pathSep{QLatin1Char(pathSepC)};
-            int sepCount = 0;
-            if (v.startsWith(pathSep))
-                ++sepCount;
-            if (value.endsWith(pathSep))
-                ++sepCount;
-            if (sepCount == 2)
-                v.remove(0, 1);
-            else if (sepCount == 0)
-                v.prepend(pathSep);
-            v.prepend(expand(e, value));
-            e->set(name, v);
-        } else {
-            apply(e, Set);
-        }
-    }
-        break;
-    case Append: {
-        const Environment::const_iterator it = e->constFind(name);
-        if (it != e->constEnd()) {
-            QString v = it.value();
-            const QChar pathSep{QLatin1Char(pathSepC)};
-            int sepCount = 0;
-            if (v.endsWith(pathSep))
-                ++sepCount;
-            if (value.startsWith(pathSep))
-                ++sepCount;
-            if (sepCount == 2)
-                v.chop(1);
-            else if (sepCount == 0)
-                v.append(pathSep);
-            v.append(expand(e, value));
-            e->set(name, v);
-        } else {
-            apply(e, Set);
-        }
-    }
-        break;
-    }
-}
-
-Environment::Environment(const QStringList &env, OsType osType) : m_osType(osType)
-{
-    for (const QString &s : env) {
-        int i = s.indexOf('=', 1);
-        if (i >= 0) {
-            const QString key = s.left(i);
-            const QString value = s.mid(i + 1);
-            set(key, value);
-        }
-    }
-}
-
-QStringList Environment::toStringList() const
-{
-    QStringList result;
-    for (auto it = m_values.constBegin(); it != m_values.constEnd(); ++it)
-        result.append(it.key() + '=' + it.value());
-    return result;
 }
 
 QProcessEnvironment Environment::toProcessEnvironment() const
@@ -278,48 +71,6 @@ QProcessEnvironment Environment::toProcessEnvironment() const
     for (auto it = m_values.constBegin(); it != m_values.constEnd(); ++it)
         result.insert(it.key(), it.value());
     return result;
-}
-
-void Environment::set(const QString &key, const QString &value)
-{
-    auto it = findKey(m_values, m_osType, key);
-    if (it == m_values.end())
-        m_values.insert(key, value);
-    else
-        it.value() = value;
-}
-
-void Environment::unset(const QString &key)
-{
-    auto it = findKey(m_values, m_osType, key);
-    if (it != m_values.end())
-        m_values.erase(it);
-}
-
-void Environment::appendOrSet(const QString &key, const QString &value, const QString &sep)
-{
-    auto it = findKey(m_values, m_osType, key);
-    if (it == m_values.end()) {
-        m_values.insert(key, value);
-    } else {
-        // Append unless it is already there
-        const QString toAppend = sep + value;
-        if (!it.value().endsWith(toAppend))
-            it.value().append(toAppend);
-    }
-}
-
-void Environment::prependOrSet(const QString&key, const QString &value, const QString &sep)
-{
-    auto it = findKey(m_values, m_osType, key);
-    if (it == m_values.end()) {
-        m_values.insert(key, value);
-    } else {
-        // Prepend unless it is already there
-        const QString toPrepend = value + sep;
-        if (!it.value().startsWith(toPrepend))
-            it.value().prepend(toPrepend);
-    }
 }
 
 void Environment::appendOrSetPath(const QString &value)
@@ -332,6 +83,34 @@ void Environment::prependOrSetPath(const QString &value)
 {
     prependOrSet("PATH", QDir::toNativeSeparators(value),
             QString(OsSpecificAspects::pathListSeparator(m_osType)));
+}
+
+void Environment::appendOrSet(const QString &key, const QString &value, const QString &sep)
+{
+    QTC_ASSERT(!key.contains('='), return );
+    auto it = findKey(m_values, m_osType, key);
+    if (it == m_values.end()) {
+        m_values.insert(key, value);
+    } else {
+        // Append unless it is already there
+        const QString toAppend = sep + value;
+        if (!it.value().endsWith(toAppend))
+            it.value().append(toAppend);
+    }
+}
+
+void Environment::prependOrSet(const QString &key, const QString &value, const QString &sep)
+{
+    QTC_ASSERT(!key.contains('='), return );
+    auto it = findKey(m_values, m_osType, key);
+    if (it == m_values.end()) {
+        m_values.insert(key, value);
+    } else {
+        // Prepend unless it is already there
+        const QString toPrepend = value + sep;
+        if (!it.value().startsWith(toPrepend))
+            it.value().prepend(toPrepend);
+    }
 }
 
 void Environment::prependOrSetLibrarySearchPath(const QString &value)
@@ -399,19 +178,14 @@ void Environment::setupEnglishOutput(QStringList *environment)
     *environment = env.toStringList();
 }
 
-void Environment::clear()
-{
-    m_values.clear();
-}
-
-FileName Environment::searchInDirectory(const QStringList &execs, const FileName &directory,
-                                        QSet<FileName> &alreadyChecked) const
+FilePath Environment::searchInDirectory(const QStringList &execs, const FilePath &directory,
+                                        QSet<FilePath> &alreadyChecked) const
 {
     const int checkedCount = alreadyChecked.count();
     alreadyChecked.insert(directory);
 
     if (directory.isEmpty() || alreadyChecked.count() == checkedCount)
-        return FileName();
+        return FilePath();
 
     const QString dir = directory.toString();
 
@@ -419,9 +193,9 @@ FileName Environment::searchInDirectory(const QStringList &execs, const FileName
     for (const QString &exec : execs) {
         fi.setFile(dir, exec);
         if (fi.isFile() && fi.isExecutable())
-            return FileName::fromString(fi.absoluteFilePath());
+            return FilePath::fromString(fi.absoluteFilePath());
     }
-    return FileName();
+    return FilePath();
 }
 
 QStringList Environment::appendExeExtensions(const QString &executable) const
@@ -447,19 +221,25 @@ bool Environment::isSameExecutable(const QString &exe1, const QString &exe2) con
     const QStringList exe2List = appendExeExtensions(exe2);
     for (const QString &i1 : exe1List) {
         for (const QString &i2 : exe2List) {
-            if (FileName::fromString(i1) == FileName::fromString(i2))
+            const FilePath f1 = FilePath::fromString(i1);
+            const FilePath f2 = FilePath::fromString(i2);
+            if (f1 == f2)
+                return true;
+            if (FileUtils::resolveSymlinks(f1) == FileUtils::resolveSymlinks(f2))
+                return true;
+            if (FileUtils::fileId(f1) == FileUtils::fileId(f2))
                 return true;
         }
     }
     return false;
 }
 
-FileName Environment::searchInPath(const QString &executable,
-                                   const FileNameList &additionalDirs,
+FilePath Environment::searchInPath(const QString &executable,
+                                   const FilePathList &additionalDirs,
                                    const PathFilter &func) const
 {
     if (executable.isEmpty())
-        return FileName();
+        return FilePath();
 
     const QString exec = QDir::cleanPath(expandVariables(executable));
     const QFileInfo fi(exec);
@@ -470,149 +250,39 @@ FileName Environment::searchInPath(const QString &executable,
         for (const QString &path : execs) {
             QFileInfo pfi = QFileInfo(path);
             if (pfi.isFile() && pfi.isExecutable())
-                return FileName::fromString(path);
+                return FilePath::fromString(path);
         }
-        return FileName::fromString(exec);
+        return FilePath::fromString(exec);
     }
 
-    QSet<FileName> alreadyChecked;
-    for (const FileName &dir : additionalDirs) {
-        FileName tmp = searchInDirectory(execs, dir, alreadyChecked);
+    QSet<FilePath> alreadyChecked;
+    for (const FilePath &dir : additionalDirs) {
+        FilePath tmp = searchInDirectory(execs, dir, alreadyChecked);
         if (!tmp.isEmpty() && (!func || func(tmp)))
             return tmp;
     }
 
     if (executable.contains('/'))
-        return FileName();
+        return FilePath();
 
-    for (const FileName &p : path()) {
-        FileName tmp = searchInDirectory(execs, p, alreadyChecked);
+    for (const FilePath &p : path()) {
+        FilePath tmp = searchInDirectory(execs, p, alreadyChecked);
         if (!tmp.isEmpty() && (!func || func(tmp)))
             return tmp;
     }
-    return FileName();
+    return FilePath();
 }
 
-FileNameList Environment::path() const
+FilePathList Environment::path() const
 {
     const QStringList pathComponents = value("PATH")
             .split(OsSpecificAspects::pathListSeparator(m_osType), QString::SkipEmptyParts);
-    return Utils::transform(pathComponents, &FileName::fromUserInput);
+    return Utils::transform(pathComponents, &FilePath::fromUserInput);
 }
 
-QString Environment::value(const QString &key) const
+void Environment::modifySystemEnvironment(const EnvironmentItems &list)
 {
-    const auto it = findKey(m_values, m_osType, key);
-    return it != m_values.end() ? it.value() : QString();
-}
-
-QString Environment::key(Environment::const_iterator it) const
-{
-    return it.key();
-}
-
-QString Environment::value(Environment::const_iterator it) const
-{
-    return it.value();
-}
-
-Environment::const_iterator Environment::constBegin() const
-{
-    return m_values.constBegin();
-}
-
-Environment::const_iterator Environment::constEnd() const
-{
-    return m_values.constEnd();
-}
-
-Environment::const_iterator Environment::constFind(const QString &name) const
-{
-    return findKey(m_values, m_osType, name);
-}
-
-int Environment::size() const
-{
-    return m_values.size();
-}
-
-void Environment::modify(const QList<EnvironmentItem> & list)
-{
-    Environment resultEnvironment = *this;
-    for (const EnvironmentItem &item : list)
-        item.apply(&resultEnvironment);
-    *this = resultEnvironment;
-}
-
-QList<EnvironmentItem> Environment::diff(const Environment &other, bool checkAppendPrepend) const
-{
-    QMap<QString, QString>::const_iterator thisIt = constBegin();
-    QMap<QString, QString>::const_iterator otherIt = other.constBegin();
-
-    QList<EnvironmentItem> result;
-    while (thisIt != constEnd() || otherIt != other.constEnd()) {
-        if (thisIt == constEnd()) {
-            result.append(EnvironmentItem(otherIt.key(), otherIt.value()));
-            ++otherIt;
-        } else if (otherIt == other.constEnd()) {
-            result.append(EnvironmentItem(thisIt.key(), QString(), EnvironmentItem::Unset));
-            ++thisIt;
-        } else if (thisIt.key() < otherIt.key()) {
-            result.append(EnvironmentItem(thisIt.key(), QString(), EnvironmentItem::Unset));
-            ++thisIt;
-        } else if (thisIt.key() > otherIt.key()) {
-            result.append(EnvironmentItem(otherIt.key(), otherIt.value()));
-            ++otherIt;
-        } else {
-            const QString &oldValue = thisIt.value();
-            const QString &newValue = otherIt.value();
-            if (oldValue != newValue) {
-                if (checkAppendPrepend && newValue.startsWith(oldValue)) {
-                    QString appended = newValue.right(newValue.size() - oldValue.size());
-                    if (appended.startsWith(QLatin1Char(pathSepC)))
-                        appended.remove(0, 1);
-                    result.append(EnvironmentItem(otherIt.key(), appended,
-                                                  EnvironmentItem::Append));
-                } else if (checkAppendPrepend && newValue.endsWith(oldValue)) {
-                    QString prepended = newValue.left(newValue.size() - oldValue.size());
-                    if (prepended.endsWith(QLatin1Char(pathSepC)))
-                        prepended.chop(1);
-                    result.append(EnvironmentItem(otherIt.key(), prepended,
-                                                  EnvironmentItem::Prepend));
-                } else {
-                    result.append(EnvironmentItem(otherIt.key(), newValue));
-                }
-            }
-            ++otherIt;
-            ++thisIt;
-        }
-    }
-    return result;
-}
-
-bool Environment::hasKey(const QString &key) const
-{
-    return m_values.contains(key);
-}
-
-OsType Environment::osType() const
-{
-    return m_osType;
-}
-
-QString Environment::userName() const
-{
-    return value(QString::fromLatin1(m_osType == OsTypeWindows ? "USERNAME" : "USER"));
-}
-
-bool Environment::operator!=(const Environment &other) const
-{
-    return !(*this == other);
-}
-
-bool Environment::operator==(const Environment &other) const
-{
-    return m_osType == other.m_osType && m_values == other.m_values;
+    staticSystemEnvironment->modify(list);
 }
 
 /** Expand environment variables in a string.
@@ -691,9 +361,32 @@ QString Environment::expandVariables(const QString &input) const
     return result;
 }
 
+FilePath Environment::expandVariables(const FilePath &variables) const
+{
+    return FilePath::fromString(expandVariables(variables.toString()));
+}
+
 QStringList Environment::expandVariables(const QStringList &variables) const
 {
     return Utils::transform(variables, [this](const QString &i) { return expandVariables(i); });
+}
+
+void EnvironmentProvider::addProvider(EnvironmentProvider &&provider)
+{
+    environmentProviders->append(std::move(provider));
+}
+
+const QVector<EnvironmentProvider> EnvironmentProvider::providers()
+{
+    return *environmentProviders;
+}
+
+optional<EnvironmentProvider> EnvironmentProvider::provider(const QByteArray &id)
+{
+    const int index = indexOf(*environmentProviders, equal(&EnvironmentProvider::id, id));
+    if (index >= 0)
+        return make_optional(environmentProviders->at(index));
+    return nullopt;
 }
 
 } // namespace Utils

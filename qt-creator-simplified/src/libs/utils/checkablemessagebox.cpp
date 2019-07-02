@@ -32,6 +32,7 @@
 #include <QLabel>
 #include <QPushButton>
 #include <QSettings>
+#include <QStyle>
 
 /*!
     \class Utils::CheckableMessageBox
@@ -52,7 +53,6 @@ class CheckableMessageBoxPrivate
 {
 public:
     CheckableMessageBoxPrivate(QDialog *q)
-        : clickedButton(0)
     {
         QSizePolicy sizePolicy(QSizePolicy::Minimum, QSizePolicy::Preferred);
 
@@ -63,7 +63,7 @@ public:
         pixmapLabel->setSizePolicy(sizePolicy);
         pixmapLabel->setVisible(false);
 
-        QSpacerItem *pixmapSpacer =
+        auto pixmapSpacer =
             new QSpacerItem(0, 5, QSizePolicy::Minimum, QSizePolicy::MinimumExpanding);
 
         messageLabel = new QLabel(q);
@@ -72,9 +72,9 @@ public:
         messageLabel->setOpenExternalLinks(true);
         messageLabel->setTextInteractionFlags(Qt::LinksAccessibleByKeyboard|Qt::LinksAccessibleByMouse);
 
-        QSpacerItem *checkBoxRightSpacer =
+        auto checkBoxRightSpacer =
             new QSpacerItem(1, 1, QSizePolicy::Expanding, QSizePolicy::Minimum);
-        QSpacerItem *buttonSpacer =
+        auto buttonSpacer =
             new QSpacerItem(0, 1, QSizePolicy::Minimum, QSizePolicy::Minimum);
 
         checkBox = new QCheckBox(q);
@@ -84,30 +84,31 @@ public:
         buttonBox->setOrientation(Qt::Horizontal);
         buttonBox->setStandardButtons(QDialogButtonBox::Cancel|QDialogButtonBox::Ok);
 
-        QVBoxLayout *verticalLayout = new QVBoxLayout();
+        auto verticalLayout = new QVBoxLayout();
         verticalLayout->addWidget(pixmapLabel);
         verticalLayout->addItem(pixmapSpacer);
 
-        QHBoxLayout *horizontalLayout_2 = new QHBoxLayout();
+        auto horizontalLayout_2 = new QHBoxLayout();
         horizontalLayout_2->addLayout(verticalLayout);
         horizontalLayout_2->addWidget(messageLabel);
 
-        QHBoxLayout *horizontalLayout = new QHBoxLayout();
+        auto horizontalLayout = new QHBoxLayout();
         horizontalLayout->addWidget(checkBox);
         horizontalLayout->addItem(checkBoxRightSpacer);
 
-        QVBoxLayout *verticalLayout_2 = new QVBoxLayout(q);
+        auto verticalLayout_2 = new QVBoxLayout(q);
         verticalLayout_2->addLayout(horizontalLayout_2);
         verticalLayout_2->addLayout(horizontalLayout);
         verticalLayout_2->addItem(buttonSpacer);
         verticalLayout_2->addWidget(buttonBox);
     }
 
-    QLabel *pixmapLabel;
-    QLabel *messageLabel;
-    QCheckBox *checkBox;
-    QDialogButtonBox *buttonBox;
-    QAbstractButton *clickedButton;
+    QLabel *pixmapLabel = nullptr;
+    QLabel *messageLabel = nullptr;
+    QCheckBox *checkBox = nullptr;
+    QDialogButtonBox *buttonBox = nullptr;
+    QAbstractButton *clickedButton = nullptr;
+    QMessageBox::Icon icon = QMessageBox::NoIcon;
 };
 
 CheckableMessageBox::CheckableMessageBox(QWidget *parent) :
@@ -149,17 +150,53 @@ void CheckableMessageBox::setText(const QString &t)
     d->messageLabel->setText(t);
 }
 
-QPixmap CheckableMessageBox::iconPixmap() const
+QMessageBox::Icon CheckableMessageBox::icon() const
 {
-    if (const QPixmap *p = d->pixmapLabel->pixmap())
-        return QPixmap(*p);
+    return d->icon;
+}
+
+// See QMessageBoxPrivate::standardIcon
+static QPixmap pixmapForIcon(QMessageBox::Icon icon, QWidget *w)
+{
+    const QStyle *style = w ? w->style() : QApplication::style();
+    const int iconSize = style->pixelMetric(QStyle::PM_MessageBoxIconSize, nullptr, w);
+    QIcon tmpIcon;
+    switch (icon) {
+    case QMessageBox::Information:
+        tmpIcon = style->standardIcon(QStyle::SP_MessageBoxInformation, nullptr, w);
+        break;
+    case QMessageBox::Warning:
+        tmpIcon = style->standardIcon(QStyle::SP_MessageBoxWarning, nullptr, w);
+        break;
+    case QMessageBox::Critical:
+        tmpIcon = style->standardIcon(QStyle::SP_MessageBoxCritical, nullptr, w);
+        break;
+    case QMessageBox::Question:
+        tmpIcon = style->standardIcon(QStyle::SP_MessageBoxQuestion, nullptr, w);
+        break;
+    default:
+        break;
+    }
+    if (!tmpIcon.isNull()) {
+        QWindow *window = nullptr;
+        if (w) {
+            window = w->windowHandle();
+            if (!window) {
+                if (const QWidget *nativeParent = w->nativeParentWidget())
+                    window = nativeParent->windowHandle();
+            }
+        }
+        return tmpIcon.pixmap(window, QSize(iconSize, iconSize));
+    }
     return QPixmap();
 }
 
-void CheckableMessageBox::setIconPixmap(const QPixmap &p)
+void CheckableMessageBox::setIcon(QMessageBox::Icon icon)
 {
-    d->pixmapLabel->setPixmap(p);
-    d->pixmapLabel->setVisible(!p.isNull());
+    d->icon = icon;
+    const QPixmap pixmap = pixmapForIcon(icon, this);
+    d->pixmapLabel->setPixmap(pixmap);
+    d->pixmapLabel->setVisible(!pixmap.isNull());
 }
 
 bool CheckableMessageBox::isChecked() const
@@ -215,7 +252,7 @@ QPushButton *CheckableMessageBox::addButton(const QString &text, QDialogButtonBo
 QDialogButtonBox::StandardButton CheckableMessageBox::defaultButton() const
 {
     foreach (QAbstractButton *b, d->buttonBox->buttons())
-        if (QPushButton *pb = qobject_cast<QPushButton *>(b))
+        if (auto *pb = qobject_cast<QPushButton *>(b))
             if (pb->isDefault())
                return d->buttonBox->standardButton(pb);
     return QDialogButtonBox::NoButton;
@@ -240,7 +277,7 @@ CheckableMessageBox::question(QWidget *parent,
 {
     CheckableMessageBox mb(parent);
     mb.setWindowTitle(title);
-    mb.setIconPixmap(QMessageBox::standardIcon(QMessageBox::Question));
+    mb.setIcon(QMessageBox::Question);
     mb.setText(question);
     mb.setCheckBoxText(checkBoxText);
     mb.setChecked(*checkBoxSetting);
@@ -262,7 +299,7 @@ CheckableMessageBox::information(QWidget *parent,
 {
     CheckableMessageBox mb(parent);
     mb.setWindowTitle(title);
-    mb.setIconPixmap(QMessageBox::standardIcon(QMessageBox::Information));
+    mb.setIcon(QMessageBox::Information);
     mb.setText(text);
     mb.setCheckBoxText(checkBoxText);
     mb.setChecked(*checkBoxSetting);
@@ -278,7 +315,7 @@ QMessageBox::StandardButton CheckableMessageBox::dialogButtonBoxToMessageBoxButt
     return static_cast<QMessageBox::StandardButton>(int(db));
 }
 
-bool askAgain(QSettings *settings, const QString &settingsSubKey)
+bool CheckableMessageBox::shouldAskAgain(QSettings *settings, const QString &settingsSubKey)
 {
     if (QTC_GUARD(settings)) {
         settings->beginGroup(QLatin1String(kDoNotAskAgainKey));
@@ -298,9 +335,7 @@ void initDoNotAskAgainMessageBox(CheckableMessageBox &messageBox, const QString 
                                  DoNotAskAgainType type)
 {
     messageBox.setWindowTitle(title);
-    messageBox.setIconPixmap(QMessageBox::standardIcon(type == Information
-                                               ? QMessageBox::Information
-                                               : QMessageBox::Question));
+    messageBox.setIcon(type == Information ? QMessageBox::Information : QMessageBox::Question);
     messageBox.setText(text);
     messageBox.setCheckBoxVisible(true);
     messageBox.setCheckBoxText(type == Information ? CheckableMessageBox::msgDoNotShowAgain()
@@ -310,7 +345,7 @@ void initDoNotAskAgainMessageBox(CheckableMessageBox &messageBox, const QString 
     messageBox.setDefaultButton(defaultButton);
 }
 
-void doNotAskAgain(QSettings *settings, const QString &settingsSubKey)
+void CheckableMessageBox::doNotAskAgain(QSettings *settings, const QString &settingsSubKey)
 {
     if (!settings)
         return;
@@ -338,7 +373,7 @@ CheckableMessageBox::doNotAskAgainQuestion(QWidget *parent, const QString &title
                                            QDialogButtonBox::StandardButton acceptButton)
 
 {
-    if (!askAgain(settings, settingsSubKey))
+    if (!shouldAskAgain(settings, settingsSubKey))
         return acceptButton;
 
     CheckableMessageBox messageBox(parent);
@@ -366,7 +401,7 @@ CheckableMessageBox::doNotShowAgainInformation(QWidget *parent, const QString &t
                                            QDialogButtonBox::StandardButton defaultButton)
 
 {
-    if (!askAgain(settings, settingsSubKey))
+    if (!shouldAskAgain(settings, settingsSubKey))
             return defaultButton;
 
     CheckableMessageBox messageBox(parent);

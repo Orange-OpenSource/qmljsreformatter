@@ -49,11 +49,9 @@ const char kFileBaseNamePostfix[] = ":FileBaseName";
 class MacroExpanderPrivate : public AbstractMacroExpander
 {
 public:
-    MacroExpanderPrivate()
-        : m_accumulating(false), m_aborted(false), m_lockDepth(0)
-    {}
+    MacroExpanderPrivate() = default;
 
-    bool resolveMacro(const QString &name, QString *ret, QSet<AbstractMacroExpander *> &seen)
+    bool resolveMacro(const QString &name, QString *ret, QSet<AbstractMacroExpander *> &seen) override
     {
         // Prevent loops:
         const int count = seen.count();
@@ -113,10 +111,10 @@ public:
     QMap<QByteArray, QString> m_descriptions;
     QString m_displayName;
     QVector<MacroExpanderProvider> m_subProviders;
-    bool m_accumulating;
+    bool m_accumulating = false;
 
-    bool m_aborted;
-    int m_lockDepth;
+    bool m_aborted = false;
+    int m_lockDepth = 0;
 };
 
 } // Internal
@@ -292,9 +290,37 @@ QString MacroExpander::expand(const QString &stringWithVariables) const
     return res;
 }
 
+FilePath MacroExpander::expand(const FilePath &fileNameWithVariables) const
+{
+    return FilePath::fromString(expand(fileNameWithVariables.toString()));
+}
+
 QByteArray MacroExpander::expand(const QByteArray &stringWithVariables) const
 {
     return expand(QString::fromLatin1(stringWithVariables)).toLatin1();
+}
+
+QVariant MacroExpander::expandVariant(const QVariant &v) const
+{
+    const auto type = QMetaType::Type(v.type());
+    if (type == QMetaType::QString) {
+        return expand(v.toString());
+    } else if (type == QMetaType::QStringList) {
+        return Utils::transform(v.toStringList(),
+                                [this](const QString &s) -> QVariant { return expand(s); });
+    } else if (type == QMetaType::QVariantList) {
+        return Utils::transform(v.toList(), [this](const QVariant &v) { return expandVariant(v); });
+    } else if (type == QMetaType::QVariantMap) {
+        const auto map = v.toMap();
+        QVariantMap result;
+        QMapIterator<QString, QVariant> it(map);
+        while (it.hasNext()) {
+            it.next();
+            result.insert(it.key(), expandVariant(it.value()));
+        }
+        return result;
+    }
+    return v;
 }
 
 QString MacroExpander::expandProcessArgs(const QString &argsWithVariables) const
@@ -396,7 +422,7 @@ void MacroExpander::registerFileVariables(const QByteArray &prefix,
 
     registerVariable(prefix + kFileNamePostfix,
          tr("%1: File name without path.").arg(heading),
-         [base]() -> QString { QString tmp = base(); return tmp.isEmpty() ? QString() : Utils::FileName::fromString(tmp).fileName(); },
+         [base]() -> QString { QString tmp = base(); return tmp.isEmpty() ? QString() : FilePath::fromString(tmp).fileName(); },
          visibleInChooser);
 
     registerVariable(prefix + kFileBaseNamePostfix,

@@ -1,8 +1,5 @@
 The following statements/expressions should be tested but can't be reproduced for the moment:
 - DebuggerStatement
 - Program
-- PropertyGetterSetter
 - PropertyName
-- PropertyNameAndValue
-- SourceElement
-- StatementSourceElement
+- UiEnumMemberList

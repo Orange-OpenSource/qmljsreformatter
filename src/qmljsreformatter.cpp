@@ -1515,8 +1515,10 @@ protected:
         else if (cast<TypeOfExpression*>(ast)) display += displayTag("TypeOfExpression", preVisit);
         else if (cast<UiArrayBinding*>(ast)) display += displayTag("UiArrayBinding", preVisit);
         else if (cast<UiArrayMemberList*>(ast)) display += displayTag("UiArrayMemberList", preVisit);
+        else if (cast<UiEnumDeclaration*>(ast)) display += displayTag("UiEnumDeclaration", preVisit);
         else if (cast<UiHeaderItemList*>(ast)) display += displayTag("UiHeaderItemList", preVisit);
         else if (cast<UiImport*>(ast)) display += displayTag("UiImport", preVisit);
+        //else if (cast<UiEnumMemberList*>(ast)) display += displayTag("UiEnumMemberList [WARNING: Not yet taken into account]", preVisit);
         else if (cast<UiObjectBinding*>(ast)) display += displayTag("UiObjectBinding", preVisit);
         else if (cast<UiObjectDefinition*>(ast)) display += displayTag("UiObjectDefinition", preVisit);
         else if (cast<UiObjectInitializer*>(ast)) display += displayTag("UiObjectInitializer", preVisit);

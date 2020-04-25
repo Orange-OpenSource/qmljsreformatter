@@ -10,16 +10,18 @@ This project supports two versions of qmljsreformatter:
 
 ## How to build qmljsreformatter as a standalone binary
 
-Download at least the Qt 5.8 source version: https://download.qt.io/archive/qt/5.8/5.8.0/single/qt-everywhere-opensource-src-5.8.0.tar.gz.mirrorlist
-
-Build Qt 5.8 sources:
+Build Qt 5.12 sources:
 ```bash
-tar xf qt-everywhere-opensource-src-5.8.0.tar.gz
-cd qt-everywhere-opensource-src-5.8.0
-./configure -prefix {SOMEWHERE}/Qt5.8.0.static -opensource -static -skip wayland -no-egl -nomake examples
+git clone git://code.qt.io/qt/qt5.git
+cd qt5
+git checkout v5.12.8
+./init-repository
+./configure -prefix {SOMEWHERE}/Qt5.12.8.static -opensource -static -skip wayland -no-egl -nomake examples -nomake tests
 make -j 4 # (or more jobs if possible)
 make install
 ```
+
+**Note**: Qt 5.12.8 is the last tested version to compile qmljsreformatter but a more recent version should work too!
 
 Build qmljsreformatter
 ```bash
@@ -27,9 +29,9 @@ cd qmljsreformatter
 mkdir build && cd build
 
 # Original (from Qt Creator source code) version of qmljsreformatter
-{SOMEWHERE}/Qt5.8.0.static/bin/qmake ..
+{SOMEWHERE}/Qt5.12.8.static/bin/qmake ..
 # or the Orange version
-# $ {SOMEWHERE}/Qt5.8.0.static/bin/qmake .. CONFIG+=ORANGE
+# $ {SOMEWHERE}/Qt5.12.8.static/bin/qmake .. CONFIG+=ORANGE
 
 make -j 4 # (or more jobs if possible)
 ```

@@ -21,6 +21,7 @@ HEADERS += \
     $$QT_CREATOR_SIMPLIFIED_SRC/src/libs/utils/globalfilechangeblocker.h \
     $$QT_CREATOR_SIMPLIFIED_SRC/src/libs/utils/savefile.h \
     $$QT_CREATOR_SIMPLIFIED_SRC/src/libs/utils/optional.h \
+    $$QT_CREATOR_SIMPLIFIED_SRC/src/libs/utils/qtcprocess.h \
     $$QT_CREATOR_SIMPLIFIED_SRC/src/libs/qmljs/qmljscodeformatter.h \
     $$QT_CREATOR_SIMPLIFIED_SRC/src/libs/qmljs/qmljsinterpreter.h \
     $$QT_CREATOR_SIMPLIFIED_SRC/src/libs/qmljs/qmljsmodelmanagerinterface.h \
@@ -91,6 +92,9 @@ SOURCES += \
     $$QT_CREATOR_SIMPLIFIED_SRC/src/libs/utils/qrcparser.cpp \
     $$QT_CREATOR_SIMPLIFIED_SRC/src/libs/utils/qtcassert.cpp \ 
     $$QT_CREATOR_SIMPLIFIED_SRC/src/libs/utils/runextensions.cpp \
+    $$QT_CREATOR_SIMPLIFIED_SRC/src/libs/utils/namevaluedictionary.cpp \
+    $$QT_CREATOR_SIMPLIFIED_SRC/src/libs/utils/namevalueitem.cpp \
+    $$QT_CREATOR_SIMPLIFIED_SRC/src/libs/utils/qtcprocess.cpp \
     $$QT_CREATOR_SIMPLIFIED_SRC/src/libs/utils/savefile.cpp
 
 SOURCES += \
